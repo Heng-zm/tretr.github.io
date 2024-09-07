@@ -3,72 +3,71 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Internet Speed Test</title>
+  <title>Upload Image by Link and Download</title>
   <style>
     body {
       font-family: Arial, sans-serif;
       display: flex;
-      justify-content: center;
+      flex-direction: column;
       align-items: center;
+      justify-content: center;
       height: 100vh;
-      background-color: #f4f4f4;
     }
-    #speedTestContainer {
-      text-align: center;
-      background-color: #fff;
-      padding: 30px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
-      border-radius: 10px;
+    img {
+      max-width: 100%;
+      height: auto;
+      margin-top: 20px;
     }
-    #startButton {
-      padding: 10px 20px;
+    .input-link, .download-button {
+      margin-top: 10px;
+      padding: 10px;
       font-size: 16px;
-      background-color: #007bff;
-      color: #fff;
+    }
+    .download-button {
+      background-color: #4CAF50;
+      color: white;
       border: none;
       cursor: pointer;
-      border-radius: 5px;
     }
-    #startButton:hover {
-      background-color: #0056b3;
-    }
-    #downloadSpeed {
-      margin: 10px 0;
-      font-size: 18px;
+    .download-button:hover {
+      background-color: #45a049;
     }
   </style>
 </head>
 <body>
 
-<div id="speedTestContainer">
-  <h2>Internet Speed Test</h2>
-  <button id="startButton" onclick="startSpeedTest()">Start Speed Test</button>
-  <div id="result">
-    <p id="downloadSpeed">Download Speed: -- Mbps</p>
-  </div>
-</div>
+  <h1>Upload Image by Link and Download</h1>
 
-<script>
-  function startSpeedTest() {
-    // Start timing the download
-    const startTime = new Date().getTime();
-    const imageUrl = "https://i.pinimg.com/736x/b6/a5/c1/b6a5c1fc0d48f8f49f1d2e834e8c82ab.jpg"; // Image to download (approximately 2MB)
-    const downloadSize = 2 * 1024 * 1024; // Approximate size of the file in bytes (2MB)
+  <!-- Input field to paste the image link -->
+  <input type="text" id="image-link" class="input-link" placeholder="Paste image URL here" />
 
-    const downloadImg = new Image();
-    downloadImg.onload = function () {
-      const endTime = new Date().getTime();
-      const duration = (endTime - startTime) / 1000; // Time in seconds
-      const bitsLoaded = downloadSize * 8; // Convert bytes to bits
-      const speedMbps = (bitsLoaded / duration / 1024 / 1024).toFixed(2); // Calculate speed in Mbps
+  <!-- Button to display the image -->
+  <button class="input-link" onclick="displayImage()">Display Image</button>
 
-      document.getElementById('downloadSpeed').innerHTML = `Download Speed: ${speedMbps} Mbps`;
-    };
+  <!-- Image tag to show the uploaded image -->
+  <img id="image" alt="Image will be displayed here" style="display:none;">
 
-    // Trigger the image download
-    downloadImg.src = imageUrl + "?cachebuster=" + Math.random(); // Cache buster to avoid caching
-  }
-</script>
+  <!-- Button to download the image -->
+  <a id="download-link" download="downloaded-image.jpg" style="display:none;">
+    <button class="download-button">Download Image</button>
+  </a>
+
+  <script>
+    // Function to display the image from the link
+    function displayImage() {
+      const imageUrl = document.getElementById('image-link').value;
+      const image = document.getElementById('image');
+      const downloadLink = document.getElementById('download-link');
+
+      // Set the image source to the provided URL
+      image.src = imageUrl;
+      image.style.display = 'block';
+
+      // Set the download link
+      downloadLink.href = imageUrl;
+      downloadLink.style.display = 'block';
+    }
+  </script>
 
 </body>
 </html>
