@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Internet Speed Test</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background-color: #f4f4f4;
+    }
+    #speedTestContainer {
+      text-align: center;
+      background-color: #fff;
+      padding: 30px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      border-radius: 10px;
+    }
+    #startButton {
+      padding: 10px 20px;
+      font-size: 16px;
+      background-color: #007bff;
+      color: #fff;
+      border: none;
+      cursor: pointer;
+      border-radius: 5px;
+    }
+    #startButton:hover {
+      background-color: #0056b3;
+    }
+    #downloadSpeed {
+      margin: 10px 0;
+      font-size: 18px;
+    }
+  </style>
+</head>
+<body>
+
+<div id="speedTestContainer">
+  <h2>Internet Speed Test</h2>
+  <button id="startButton" onclick="startSpeedTest()">Start Speed Test</button>
+  <div id="result">
+    <p id="downloadSpeed">Download Speed: -- Mbps</p>
+  </div>
+</div>
+
+<script>
+  function startSpeedTest() {
+    // Start timing the download
+    const startTime = new Date().getTime();
+    const imageUrl = "https://upload.wikimedia.org/wikipedia/commons/4/47/PNG_transparency_demonstration_1.png"; // Image to download (approximately 2MB)
+    const downloadSize = 2 * 1024 * 1024; // Approximate size of the file in bytes (2MB)
+
+    const downloadImg = new Image();
+    downloadImg.onload = function () {
+      const endTime = new Date().getTime();
+      const duration = (endTime - startTime) / 1000; // Time in seconds
+      const bitsLoaded = downloadSize * 8; // Convert bytes to bits
+      const speedMbps = (bitsLoaded / duration / 1024 / 1024).toFixed(2); // Calculate speed in Mbps
+
+      document.getElementById('downloadSpeed').innerHTML = `Download Speed: ${speedMbps} Mbps`;
+    };
+
+    // Trigger the image download
+    downloadImg.src = imageUrl + "?cachebuster=" + Math.random(); // Cache buster to avoid caching
+  }
+</script>
+
+</body>
+</html>
