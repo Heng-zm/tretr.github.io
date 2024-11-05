@@ -48,27 +48,33 @@ async function startDetection() {
         const model = await cocoSsd.load();
         resultDiv.innerText = 'Model loaded. Starting detection...';
 
-        // Start detection
-        const detect = async () => {
-            context.drawImage(video, 0, 0, canvas.width, canvas.height);
-            const predictions = await model.detect(canvas);
-            context.clearRect(0, 0, canvas.width, canvas.height);
-            context.drawImage(video, 0, 0, canvas.width, canvas.height);
-            
-            predictions.forEach(prediction => {
-                context.beginPath();
-                context.rect(...prediction.bbox);
-                context.lineWidth = 1;
-                context.strokeStyle = 'red';
-                context.fillStyle = 'red';
-                context.stroke();
-                context.fillText(
-                    `${prediction.class} (${Math.round(prediction.score * 100)}%)`,
-                    prediction.bbox[0],
-                    prediction.bbox[1] > 10 ? prediction.bbox[1] - 5 : 10
-                );
-            });
+       
+            // Ensure the video is playing and has dimensions
+            if (video.readyState === 4 && video.videoWidth > 0 && video.videoHeight > 0) {
+                model.detect(video).then(predictions => {
+                    // Clear the canvas before drawing new predictions
+                    context.clearRect(0, 0, canvas.width, canvas.height);
 
+                    // Loop over each prediction
+                    predictions.forEach(prediction => {
+                        // Draw bounding box
+                        context.beginPath();
+                        context.rect(
+                            prediction.bbox[0],
+                            prediction.bbox[1],
+                            prediction.bbox[2],
+                            prediction.bbox[3]
+                        );
+                        context.lineWidth = 3;
+                        context.strokeStyle = "green";
+                        context.fillStyle = "green";
+                        context.stroke();
+                        context.fillText(
+                            `${prediction.class} (${Math.round(prediction.score * 100)}%)`,
+                            prediction.bbox[0],
+                            prediction.bbox[1] > 10 ? prediction.bbox[1] - 5 : 10
+                        );
+                    });
             resultDiv.innerText = `Detected: ${predictions.map(p => p.class).join(', ')}`;
             requestAnimationFrame(detect);
         };
