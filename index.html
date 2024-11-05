@@ -60,8 +60,8 @@
                     context.beginPath();
                     context.rect(...prediction.bbox);
                     context.lineWidth = 2;
-                    context.strokeStyle = 'green';
-                    context.fillStyle = 'green';
+                    context.strokeStyle = 'red';
+                    context.fillStyle = 'red';
                     context.stroke();
                     context.fillText(
                         `${prediction.class} (${Math.round(prediction.score * 100)}%)`,
