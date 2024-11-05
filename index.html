@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Camera Subject Detection</title>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+ <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
     <style>
         body {
@@ -35,6 +35,7 @@
         // Access the webcam
         const video = document.getElementById('video');
         const canvas = document.getElementById('Canvas');
+         const context = canvas.getContext('2d');
 
         // Set up the webcam stream
         async function setupWebcam() {
