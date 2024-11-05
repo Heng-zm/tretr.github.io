@@ -59,10 +59,10 @@
                 predictions.forEach(prediction => {
                     context.beginPath();
                     context.rect(...prediction.bbox);
-                    context.lineWidth = 2;
-                    context.strokeStyle = 'red';
-                    context.fillStyle = 'red';
-                    context.stroke();
+                    context.lineWidth = 5;
+                    context.strokeStyle = 'green';
+                    context.fillStyle = 'green';
+                    context.stroke(1px);
                     context.fillText(
                         `${prediction.class} (${Math.round(prediction.score * 100)}%)`,
                         prediction.bbox[0],
