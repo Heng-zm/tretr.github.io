@@ -22,33 +22,41 @@
     <h1>Camera Subject Detection</h1>
     <video id="video" width="640" height="480" autoplay></video>
     <canvas id="canvas" width="640" height="480"></canvas>
-    <button onclick="startDetection()">Start Detection</button>
     <div id="result"></div>
 
     <script>
-       // Function to start camera
-async function startCamera() {
-    try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-        video.srcObject = stream;
-        return new Promise((resolve) => {
-            video.onloadedmetadata = () => {
-                resolve();
-            };
+          // Load the object detection model
+        let model;
+        cocoSsd.load().then(loadedModel => {
+            model = loadedModel;
+            console.log("Model loaded successfully");
         });
-    } catch (error) {
-        resultDiv.innerText = "Error accessing camera: " + error.message;
-    }
-}
 
-// Function to start object detection
-async function startDetection() {
-    try {
-        // Load the model
-        const model = await cocoSsd.load();
-        resultDiv.innerText = 'Model loaded. Starting detection...';
+        // Access the webcam
+        const video = document.getElementById('webcam');
+        const canvas = document.getElementById('overlayCanvas');
+        const context = canvas.getContext('2d');
 
-       
+        // Set up the webcam stream
+        async function setupWebcam() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: true
+                });
+                video.srcObject = stream;
+            } catch (err) {
+                console.error('Error accessing webcam: ', err);
+            }
+        }
+
+        // Detect objects and update canvas with bounding boxes
+        async function detectObjects() {
+            if (!model) {
+                // Ensure model is loaded before starting detection
+                console.log('Waiting for model...');
+                return;
+            }
+
             // Ensure the video is playing and has dimensions
             if (video.readyState === 4 && video.videoWidth > 0 && video.videoHeight > 0) {
                 model.detect(video).then(predictions => {
@@ -75,16 +83,30 @@ async function startDetection() {
                             prediction.bbox[1] > 10 ? prediction.bbox[1] - 5 : 10
                         );
                     });
-            resultDiv.innerText = `Detected: ${predictions.map(p => p.class).join(', ')}`;
-            requestAnimationFrame(detect);
-        };
 
-        detect();
-    } catch (error) {
-        resultDiv.innerText = "Error loading model or starting detection: " + error.message;
-    }
-}
+                    // Re-run detection every frame
+                    requestAnimationFrame(detectObjects);
+                }).catch(err => {
+                    console.error('Error detecting objects: ', err);
+                });
+            } else {
+                // If the video is not yet ready, try again after a short delay
+                requestAnimationFrame(detectObjects);
+            }
+        }
 
+        // Initialize the webcam and start detection
+        async function init() {
+            await setupWebcam();
+
+            // Wait until the video has started playing and has valid dimensions
+            video.onplay = function () {
+                console.log("Video started playing");
+                detectObjects(); // Start detecting objects
+            };
+        }
+
+        init();
     </script>
 </body>
 </html>
