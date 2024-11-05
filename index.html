@@ -26,59 +26,59 @@
     <div id="result"></div>
 
     <script>
-        // Get video element
-        const video = document.getElementById('video');
-        const canvas = document.getElementById('canvas');
-        const context = canvas.getContext('2d');
-        const resultDiv = document.getElementById('result');
-
-        // Function to start camera
-        async function startCamera() {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-            video.srcObject = stream;
-            return new Promise((resolve) => {
-                video.onloadedmetadata = () => {
-                    resolve();
-                };
-            });
-        }
-
-        // Function to start object detection
-        async function startDetection() {
-            // Load the model
-            const model = await cocoSsd.load();
-            resultDiv.innerText = 'Loading model...';
-
-            // Start detection
-            const detect = async () => {
-                context.drawImage(video, 0, 0, canvas.width, canvas.height);
-                const predictions = await model.detect(canvas);
-                context.clearRect(0, 0, canvas.width, canvas.height);
-                context.drawImage(video, 0, 0, canvas.width, canvas.height);
-                
-                predictions.forEach(prediction => {
-                    context.beginPath();
-                    context.rect(...prediction.bbox);
-                    context.lineWidth = 1;
-                    context.strokeStyle = 'red';
-                    context.fillStyle = 'red';
-                    context.stroke(0);
-                    context.fillText(
-                        `${prediction.class} (${Math.round(prediction.score * 100)}%)`,
-                        prediction.bbox[0],
-                        prediction.bbox[1] > 10 ? prediction.bbox[1] - 5 : 10
-                    );
-                });
-
-                resultDiv.innerText = `Detected: ${predictions.map(p => p.class).join(', ')}`;
-                requestAnimationFrame(detect);
+       // Function to start camera
+async function startCamera() {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        video.srcObject = stream;
+        return new Promise((resolve) => {
+            video.onloadedmetadata = () => {
+                resolve();
             };
+        });
+    } catch (error) {
+        resultDiv.innerText = "Error accessing camera: " + error.message;
+    }
+}
 
-            detect();
-        }
+// Function to start object detection
+async function startDetection() {
+    try {
+        // Load the model
+        const model = await cocoSsd.load();
+        resultDiv.innerText = 'Model loaded. Starting detection...';
 
-        // Initialize camera
-        startCamera();
+        // Start detection
+        const detect = async () => {
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const predictions = await model.detect(canvas);
+            context.clearRect(0, 0, canvas.width, canvas.height);
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            predictions.forEach(prediction => {
+                context.beginPath();
+                context.rect(...prediction.bbox);
+                context.lineWidth = 1;
+                context.strokeStyle = 'red';
+                context.fillStyle = 'red';
+                context.stroke();
+                context.fillText(
+                    `${prediction.class} (${Math.round(prediction.score * 100)}%)`,
+                    prediction.bbox[0],
+                    prediction.bbox[1] > 10 ? prediction.bbox[1] - 5 : 10
+                );
+            });
+
+            resultDiv.innerText = `Detected: ${predictions.map(p => p.class).join(', ')}`;
+            requestAnimationFrame(detect);
+        };
+
+        detect();
+    } catch (error) {
+        resultDiv.innerText = "Error loading model or starting detection: " + error.message;
+    }
+}
+
     </script>
 </body>
 </html>
