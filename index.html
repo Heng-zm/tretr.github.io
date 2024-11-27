@@ -3,171 +3,141 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Camera Subject Detection with Tracking</title>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
+    <title>Send Live Location to Telegram Bot</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         body {
             font-family: Arial, sans-serif;
-            margin: 20px;
             text-align: center;
+            margin: 20px;
         }
-        video, canvas {
-            border: 1px solid black;
-            margin-bottom: 20px;
+        #map {
+            height: 400px;
+            width: 100%;
+            margin-top: 20px;
+            border: 1px solid #ddd;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .message {
+            margin-top: 10px;
+            font-size: 18px;
+            color: #333;
         }
     </style>
 </head>
 <body>
-    <h1>Camera Subject Detection with Tracking</h1>
-    <video id="video" width="640" height="480" autoplay></video>
-    <canvas id="canvas" width="640" height="480"></canvas>
-    <div id="result"></div>
+    <h1>Live Location with Telegram Bot</h1>
+    <button id="start-location-btn">Start Tracking</button>
+    <div class="message" id="message"></div>
+    <div id="map"></div>
 
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        // Load the object detection model
-        let model;
-        cocoSsd.load().then(loadedModel => {
-            model = loadedModel;
-            console.log("Model loaded successfully");
-        });
+        let map, marker;
+        let watchId;
 
-        // Access the webcam
-        const video = document.getElementById('video');
-        const canvas = document.getElementById('canvas');
-        const context = canvas.getContext('2d');
+        // Initialize the map
+        function initMap() {
+            map = L.map('map').setView([0, 0], 2); // Default view
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+        }
 
-        // Track previous detections to simulate basic tracking
-        let previousDetections = [];
-
-        // Set up the webcam stream
-        async function setupWebcam() {
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({
-                    video: true
-                });
-                video.srcObject = stream;
-            } catch (err) {
-                console.error('Error accessing webcam: ', err);
+        // Update the map with the user's location
+        function updateMap(latitude, longitude) {
+            if (marker) {
+                map.removeLayer(marker); // Remove existing marker
             }
+
+            // Set the new view and add a marker
+            map.setView([latitude, longitude], 15);
+            marker = L.marker([latitude, longitude]).addTo(map);
+            marker.bindPopup("You are here!").openPopup();
         }
 
-        // Function to calculate the intersection over union (IoU) for object tracking
-        function getIoU(box1, box2) {
-            const x1 = Math.max(box1[0], box2[0]);
-            const y1 = Math.max(box1[1], box2[1]);
-            const x2 = Math.min(box1[0] + box1[2], box2[0] + box2[2]);
-            const y2 = Math.min(box1[1] + box1[3], box2[1] + box2[3]);
-            const areaIntersection = Math.max(0, x2 - x1) * Math.max(0, y2 - y1);
-            const areaBox1 = box1[2] * box1[3];
-            const areaBox2 = box2[2] * box2[3];
-            const areaUnion = areaBox1 + areaBox2 - areaIntersection;
-            return areaIntersection / areaUnion;
+        // Send location to Telegram bot
+        function sendLocationToTelegram(latitude, longitude) {
+            const token = '6941579931:AAHJRb_kYDxxutmPJ7ji6F5p_laP1LjOnAA'; // Replace with your bot token
+            const chatId = '1272791365'; // Replace with your chat ID
+            const url = `https://api.telegram.org/bot${token}/sendLocation`;
+
+            // Create a request payload
+            const data = {
+                chat_id: chatId,
+                latitude: latitude,
+                longitude: longitude
+            };
+
+            // Send the request to Telegram API
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log("Location sent to Telegram:", data);
+            })
+            .catch(error => {
+                console.error('Error sending location to Telegram:', error);
+            });
         }
 
-        // Detect objects and update canvas with bounding boxes and tracking
-        async function detectObjects() {
-            if (!model) {
-                console.log('Waiting for model...');
+        // Start tracking live location
+        document.getElementById('start-location-btn').addEventListener('click', () => {
+            const messageDiv = document.getElementById('message');
+
+            // Check if Geolocation is available
+            if (!navigator.geolocation) {
+                messageDiv.textContent = "Geolocation is not supported by your browser.";
                 return;
             }
 
-            // Ensure the video is playing and has dimensions
-            if (video.readyState === 4 && video.videoWidth > 0 && video.videoHeight > 0) {
-                model.detect(video).then(predictions => {
-                    // Clear the canvas before drawing new predictions
-                    context.clearRect(0, 0, canvas.width, canvas.height);
+            // Start watching the location
+            messageDiv.textContent = "Tracking your location...";
 
-                    // List of current detections (we'll match these with previous detections for tracking)
-                    const currentDetections = [];
+            watchId = navigator.geolocation.watchPosition(
+                (position) => {
+                    const latitude = position.coords.latitude;
+                    const longitude = position.coords.longitude;
 
-                    predictions.forEach(prediction => {
-                        // Draw bounding box
-                        context.beginPath();
-                        context.rect(
-                            prediction.bbox[0],
-                            prediction.bbox[1],
-                            prediction.bbox[2],
-                            prediction.bbox[3]
-                        );
-                        context.lineWidth = 3;
-                        context.strokeStyle = "green";
-                        context.fillStyle = "green";
-                        context.stroke();
-                        context.fillText(
-                            `${prediction.class} (${Math.round(prediction.score * 100)}%)`,
-                            prediction.bbox[0],
-                            prediction.bbox[1] > 10 ? prediction.bbox[1] - 5 : 10
-                        );
+                    // Display the location
+                    messageDiv.textContent = `Location: Latitude ${latitude}, Longitude ${longitude}`;
 
-                        // Add detection to current list for tracking
-                        currentDetections.push(prediction);
-                    });
+                    // Update the map
+                    updateMap(latitude, longitude);
 
-                    // Track the objects by matching current detections with previous detections
-                    if (previousDetections.length > 0) {
-                        // Match the boxes using IoU (Intersection over Union)
-                        currentDetections.forEach(current => {
-                            let matched = false;
-                            previousDetections.forEach(prev => {
-                                const iou = getIoU(prev.bbox, current.bbox);
-                                if (iou > 0.5) { // Threshold for matching detections
-                                    matched = true;
-                                    // Draw previous bounding box with a different color
-                                    context.beginPath();
-                                    context.rect(
-                                        prev.bbox[0],
-                                        prev.bbox[1],
-                                        prev.bbox[2],
-                                        prev.bbox[3]
-                                    );
-                                    context.lineWidth = 3;
-                                    context.strokeStyle = "blue"; // Blue for tracked boxes
-                                    context.stroke();
-                                }
-                            });
-                            // If not matched, it's a new object; track with a new color
-                            if (!matched) {
-                                context.beginPath();
-                                context.rect(
-                                    current.bbox[0],
-                                    current.bbox[1],
-                                    current.bbox[2],
-                                    current.bbox[3]
-                                );
-                                context.lineWidth = 3;
-                                context.strokeStyle = "orange"; // Red for new objects
-                                context.stroke();
-                            }
-                        });
-                    }
+                    // Send the location to Telegram bot
+                    sendLocationToTelegram(latitude, longitude);
+                },
+                (error) => {
+                    console.error('Error getting location:', error);
+                    messageDiv.textContent = "Unable to retrieve location.";
+                },
+                {
+                    enableHighAccuracy: true,
+                    maximumAge: 0, // Don't use cached location
+                    timeout: 5000 // Timeout after 5 seconds
+                }
+            );
+        });
 
-                    // Update the previous detections for next frame
-                    previousDetections = currentDetections;
-
-                    // Re-run detection every frame
-                    requestAnimationFrame(detectObjects);
-                }).catch(err => {
-                    console.error('Error detecting objects: ', err);
-                });
-            } else {
-                // If the video is not yet ready, try again after a short delay
-                requestAnimationFrame(detectObjects);
-            }
-        }
-
-        // Initialize the webcam and start detection
-        async function init() {
-            await setupWebcam();
-
-            // Wait until the video has started playing and has valid dimensions
-            video.onplay = function () {
-                console.log("Video started playing");
-                detectObjects(); // Start detecting and tracking objects
-            };
-        }
-
-        init();
+        // Initialize the map on page load
+        initMap();
     </script>
 </body>
 </html>
