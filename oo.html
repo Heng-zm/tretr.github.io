@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bluetooth Scanner</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 20px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        li {
+            padding: 8px;
+            border-bottom: 1px solid #ddd;
+        }
+    </style>
+</head>
+<body>
+    <h1>Bluetooth Device Scanner</h1>
+    <button id="scan-button">Scan for Bluetooth Devices</button>
+    <ul id="device-list"></ul>
+
+    <script>
+        // Function to start scanning for Bluetooth devices
+        async function scanBluetoothDevices() {
+            try {
+                const deviceList = document.getElementById('device-list');
+                deviceList.innerHTML = ''; // Clear previous list of devices
+
+                // Request Bluetooth device with "Scan for all devices" filter
+                const device = await navigator.bluetooth.requestDevice({
+                    acceptAllDevices: true,
+                    optionalServices: ['battery_service', 'device_information'] // Optional services you can request
+                });
+
+                // Once device is selected, display its name and ID
+                const listItem = document.createElement('li');
+                listItem.textContent = `Device: ${device.name || 'Unknown'} (ID: ${device.id})`;
+                deviceList.appendChild(listItem);
+
+                console.log(`Selected device: ${device.name} with ID: ${device.id}`);
+            } catch (error) {
+                console.log('Error scanning Bluetooth devices:', error);
+                alert('Error scanning Bluetooth devices: ' + error);
+            }
+        }
+
+        // Event listener for the scan button
+        document.getElementById('scan-button').addEventListener('click', () => {
+            scanBluetoothDevices();
+        });
+    </script>
+</body>
+</html>
