@@ -3,68 +3,112 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bluetooth Scanner</title>
+    <title>Mapbox Map with Location</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Mapbox CSS -->
+    <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet">
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-            margin: 20px;
-        }
-        button {
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            padding: 15px 30px;
-            font-size: 16px;
-            cursor: pointer;
-            border-radius: 5px;
-        }
-        button:hover {
-            background-color: #45a049;
-        }
-        ul {
-            list-style-type: none;
-            padding: 0;
-        }
-        li {
-            padding: 8px;
-            border-bottom: 1px solid #ddd;
-        }
+        body { margin: 0; padding: 0; }
+        #map { position: absolute; top: 0; bottom: 0; width: 100%; }
+        .controls { position: absolute; top: 10px; left: 10px; z-index: 1; }
     </style>
 </head>
 <body>
-    <h1>Bluetooth Device Scanner</h1>
-    <button id="scan-button">Scan for Bluetooth Devices</button>
-    <ul id="device-list"></ul>
+    <div class="controls">
+        <input id="search" type="text" placeholder="Search for a location" class="mb-4 px-4 py-2 border rounded-md shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        <button id="shareLocation" class="px-4 py-2 bg-blue-500 text-white font-semibold rounded-md shadow-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400">
+            Share Location
+        </button>
+        <button id="switchMap" class="mt-4 px-4 py-2 bg-green-500 text-white font-semibold rounded-md shadow-md hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-400">
+            Switch to Satellite Map
+        </button>
+    </div>
+    <div id="map"></div>
 
+    <!-- Mapbox JS -->
+    <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
     <script>
-        // Function to start scanning for Bluetooth devices
-        async function scanBluetoothDevices() {
-            try {
-                const deviceList = document.getElementById('device-list');
-                deviceList.innerHTML = ''; // Clear previous list of devices
+        // Mapbox Access Token
+        mapboxgl.accessToken = 'pk.eyJ1Ijoib3BlbnN0cmVldGNhbSIsImEiOiJja252Ymh4ZnIwNHdkMnd0ZzF5NDVmdnR5In0.dYxz3TzZPTPzd_ibMeGK2g';
 
-                // Request Bluetooth device with "Scan for all devices" filter
-                const device = await navigator.bluetooth.requestDevice({
-                    acceptAllDevices: true,
-                    optionalServices: ['battery_service', 'device_information'] // Optional services you can request
-                });
+        // Initialize the map with a light style as the default
+        const map = new mapboxgl.Map({
+            container: 'map', // container ID
+            style: 'mapbox://styles/mapbox/light-v10', // Default Mapbox style (Light)
+            center: [104.8797, 11.5441], // Starting position [lng, lat]
+            zoom: 14.5 // Starting zoom
+        });
 
-                // Once device is selected, display its name and ID
-                const listItem = document.createElement('li');
-                listItem.textContent = `Device: ${device.name || 'Unknown'} (ID: ${device.id})`;
-                deviceList.appendChild(listItem);
+        // Add navigation controls (zoom in/out, compass)
+        map.addControl(new mapboxgl.NavigationControl());
 
-                console.log(`Selected device: ${device.name} with ID: ${device.id}`);
-            } catch (error) {
-                console.log('Error scanning Bluetooth devices:', error);
-                alert('Error scanning Bluetooth devices: ' + error);
+        // Add Geolocation Control to allow user location access
+        const geolocate = new mapboxgl.GeolocateControl({
+            positionOptions: {
+                enableHighAccuracy: true // Enable high-accuracy location
+            },
+            trackUserLocation: true, // Track user location
+            showUserHeading: true // Show user direction
+        });
+
+        // Add the geolocation control to the map
+        map.addControl(geolocate);
+
+        // Automatically trigger geolocation on load
+        map.on('load', () => {
+            geolocate.trigger();
+        });
+
+        // User Location Marker
+        let userLocation;
+        map.on('load', () => {
+            geolocate.trigger();
+            map.on('geolocate', (e) => {
+                userLocation = e.geometry.coordinates;
+                new mapboxgl.Marker()
+                    .setLngLat(userLocation)
+                    .addTo(map);
+            });
+        });
+
+        // Share Location Button
+        document.getElementById('shareLocation').addEventListener('click', function() {
+            if (userLocation) {
+                const shareableUrl = `https://www.openstreetmap.org/?mlat=${userLocation[1]}&mlon=${userLocation[0]}#map=14/${userLocation[1]}/${userLocation[0]}`;
+                alert(`Share this URL to view the location: ${shareableUrl}`);
+                console.log('Shared location URL:', shareableUrl);
+            } else {
+                alert('Location not available yet. Please wait for the geolocation to load.');
             }
-        }
+        });
 
-        // Event listener for the scan button
-        document.getElementById('scan-button').addEventListener('click', () => {
-            scanBluetoothDevices();
+        // Switch Map Style Button
+        document.getElementById('switchMap').addEventListener('click', function() {
+            const currentStyle = map.getStyle().name;
+
+            if (currentStyle === 'Mapbox Light') {
+                map.setStyle('mapbox://styles/mapbox/satellite-v9'); // Switch to Satellite map
+                this.textContent = 'Switch to Light Map'; // Update button text
+            } else {
+                map.setStyle('mapbox://styles/mapbox/light-v10'); // Switch back to Light map
+                this.textContent = 'Switch to Satellite Map'; // Update button text
+            }
+        });
+
+        // Search Functionality
+        const searchInput = document.getElementById('search');
+        searchInput.addEventListener('keyup', function(event) {
+            const query = event.target.value;
+            if (query.length > 2) {
+                // Use Mapbox Geocoding API to search for locations
+                fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${query}.json?access_token=${mapboxgl.accessToken}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        const [lng, lat] = data.features[0].geometry.coordinates;
+                        map.flyTo({ center: [lng, lat], zoom: 14 });
+                    });
+            }
         });
     </script>
 </body>
