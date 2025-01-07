@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mapbox Export Map</title>
+    <title>Mapbox Animations and Satellite Map</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Mapbox CSS -->
@@ -15,21 +15,27 @@
     </style>
 </head>
 <body>
-    <div class="controls">
-        <input id="search" type="text" placeholder="Search for a location" class="mb-4 px-4 py-2 border rounded-md shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
-        <button id="shareLocation" class="px-4 py-2 bg-blue-500 text-white font-semibold rounded-md shadow-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400">
+    <div class="controls space-y-2">
+        <input id="search" type="text" placeholder="Search for a location" class="w-full px-4 py-2 border rounded-md shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        <button id="shareLocation" class="px-4 py-2 w-full bg-blue-500 text-white font-semibold rounded-md shadow-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400">
             Share Location
         </button>
-        <button id="exportMap" class="px-4 py-2 bg-green-500 text-white font-semibold rounded-md shadow-md hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-400">
-            Export Map
+        <button id="toggleStyle" class="px-4 py-2 w-full bg-gray-500 text-white font-semibold rounded-md shadow-md hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-400">
+            Toggle Satellite Map
+        </button>
+        <button id="exportMap" class="px-4 py-2 w-full bg-green-500 text-white font-semibold rounded-md shadow-md hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-400">
+            Export Map to PDF
         </button>
     </div>
     <div id="map"></div>
 
     <!-- Mapbox JS -->
     <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
-    <!-- html2canvas CDN -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <!-- html2canvas JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/0.4.1/html2canvas.min.js"></script>
+    <!-- jsPDF JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
     <script>
         // Mapbox Access Token
         mapboxgl.accessToken = 'pk.eyJ1Ijoib3BlbnN0cmVldGNhbSIsImEiOiJja252Ymh4ZnIwNHdkMnd0ZzF5NDVmdnR5In0.dYxz3TzZPTPzd_ibMeGK2g';
@@ -37,9 +43,11 @@
         // Initialize the map
         const map = new mapboxgl.Map({
             container: 'map', // container ID
-            style: 'mapbox://styles/mapbox/light-v10', // Mapbox style
+            style: 'mapbox://styles/mapbox/light-v10', // Initial style
             center: [104.8797, 11.5441], // Starting position [lng, lat]
-            zoom: 14.5 // Starting zoom
+            zoom: 14.5, // Starting zoom
+            pitch: 45, // Tilts the map for perspective
+            bearing: 0 // Controls the map rotation
         });
 
         // Add navigation controls (zoom in/out, compass)
@@ -56,8 +64,20 @@
         // Trigger geolocation on map load
         map.on('load', () => geolocate.trigger());
 
-        // Variable to store the current marker
+        // Variable to track current marker and map style
         let currentMarker;
+        let isSatellite = false;
+
+        // Smooth Animation for Panning and Zooming
+        const smoothPanAndZoom = (lng, lat, zoom) => {
+            map.flyTo({
+                center: [lng, lat],
+                zoom: zoom,
+                speed: 1.5, // Animation speed
+                curve: 1, // Animation curve
+                easing: (t) => t // Linear easing function
+            });
+        };
 
         // Add only one marker
         map.on('click', (e) => {
@@ -80,6 +100,9 @@
                 .setLngLat([lng, lat])
                 .setPopup(popup) // Attach the popup
                 .addTo(map);
+
+            // Smoothly pan and zoom to the marker
+            smoothPanAndZoom(lng, lat, 16);
         });
 
         // Share Location Button
@@ -94,6 +117,12 @@
             }
         });
 
+        // Toggle Satellite Map
+        document.getElementById('toggleStyle').addEventListener('click', function() {
+            isSatellite = !isSatellite;
+            map.setStyle(isSatellite ? 'mapbox://styles/mapbox/satellite-v9' : 'mapbox://styles/mapbox/light-v10');
+        });
+
         // Search Functionality
         const searchInput = document.getElementById('search');
         searchInput.addEventListener('keyup', function(event) {
@@ -103,7 +132,7 @@
                     .then(response => response.json())
                     .then(data => {
                         const [lng, lat] = data.features[0].geometry.coordinates;
-                        map.flyTo({ center: [lng, lat], zoom: 14 });
+                        smoothPanAndZoom(lng, lat, 14);
 
                         // Automatically add a marker at the searched location
                         if (currentMarker) {
@@ -124,13 +153,22 @@
             }
         });
 
-        // Export Map as Image
+        // Export Map to Image or PDF
         document.getElementById('exportMap').addEventListener('click', function() {
-            html2canvas(document.getElementById('map')).then(canvas => {
-                const link = document.createElement('a');
-                link.download = 'map-screenshot.png';
-                link.href = canvas.toDataURL();
-                link.click();
+            // Capture the map container using html2canvas
+            html2canvas(document.getElementById('map')).then(function(canvas) {
+                // Convert the canvas to image data
+                const imgData = canvas.toDataURL('image/png');
+
+                // Create a new jsPDF instance
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF();
+
+                // Add the image to the PDF document
+                doc.addImage(imgData, 'PNG', 10, 10, 180, 160); // Adjust position and size as needed
+                doc.save('map.pdf'); // Save the PDF
+            }).catch(function(error) {
+                console.error('Error exporting map:', error);
             });
         });
     </script>
