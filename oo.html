@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mapbox Map with Location</title>
+    <title>Mapbox Export Map</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Mapbox CSS -->
@@ -20,22 +20,24 @@
         <button id="shareLocation" class="px-4 py-2 bg-blue-500 text-white font-semibold rounded-md shadow-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400">
             Share Location
         </button>
-        <button id="switchMap" class="mt-4 px-4 py-2 bg-green-500 text-white font-semibold rounded-md shadow-md hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-400">
-            Switch to Satellite Map
+        <button id="exportMap" class="px-4 py-2 bg-green-500 text-white font-semibold rounded-md shadow-md hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-400">
+            Export Map
         </button>
     </div>
     <div id="map"></div>
 
     <!-- Mapbox JS -->
     <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
+    <!-- html2canvas CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script>
         // Mapbox Access Token
         mapboxgl.accessToken = 'pk.eyJ1Ijoib3BlbnN0cmVldGNhbSIsImEiOiJja252Ymh4ZnIwNHdkMnd0ZzF5NDVmdnR5In0.dYxz3TzZPTPzd_ibMeGK2g';
 
-        // Initialize the map with a light style as the default
+        // Initialize the map
         const map = new mapboxgl.Map({
             container: 'map', // container ID
-            style: 'mapbox://styles/mapbox/light-v10', // Default Mapbox style (Light)
+            style: 'mapbox://styles/mapbox/light-v10', // Mapbox style
             center: [104.8797, 11.5441], // Starting position [lng, lat]
             zoom: 14.5 // Starting zoom
         });
@@ -43,56 +45,52 @@
         // Add navigation controls (zoom in/out, compass)
         map.addControl(new mapboxgl.NavigationControl());
 
-        // Add Geolocation Control to allow user location access
+        // Add Geolocation Control
         const geolocate = new mapboxgl.GeolocateControl({
-            positionOptions: {
-                enableHighAccuracy: true // Enable high-accuracy location
-            },
-            trackUserLocation: true, // Track user location
-            showUserHeading: true // Show user direction
+            positionOptions: { enableHighAccuracy: true },
+            trackUserLocation: true,
+            showUserHeading: true
         });
-
-        // Add the geolocation control to the map
         map.addControl(geolocate);
 
-        // Automatically trigger geolocation on load
-        map.on('load', () => {
-            geolocate.trigger();
-        });
+        // Trigger geolocation on map load
+        map.on('load', () => geolocate.trigger());
 
-        // User Location Marker
-        let userLocation;
-        map.on('load', () => {
-            geolocate.trigger();
-            map.on('geolocate', (e) => {
-                userLocation = e.geometry.coordinates;
-                new mapboxgl.Marker()
-                    .setLngLat(userLocation)
-                    .addTo(map);
-            });
+        // Variable to store the current marker
+        let currentMarker;
+
+        // Add only one marker
+        map.on('click', (e) => {
+            const { lng, lat } = e.lngLat;
+
+            // Remove the existing marker if present
+            if (currentMarker) {
+                currentMarker.remove();
+            }
+
+            // Create a popup
+            const popup = new mapboxgl.Popup({ offset: 25 })
+                .setHTML(`
+                    <h3>Selected Location</h3>
+                    <p>Longitude: ${lng.toFixed(4)}, Latitude: ${lat.toFixed(4)}</p>
+                `);
+
+            // Create a new marker and add it to the map
+            currentMarker = new mapboxgl.Marker({ color: 'red' })
+                .setLngLat([lng, lat])
+                .setPopup(popup) // Attach the popup
+                .addTo(map);
         });
 
         // Share Location Button
         document.getElementById('shareLocation').addEventListener('click', function() {
-            if (userLocation) {
-                const shareableUrl = `https://www.openstreetmap.org/?mlat=${userLocation[1]}&mlon=${userLocation[0]}#map=14/${userLocation[1]}/${userLocation[0]}`;
+            if (currentMarker) {
+                const lngLat = currentMarker.getLngLat();
+                const shareableUrl = `https://www.openstreetmap.org/?mlat=${lngLat.lat}&mlon=${lngLat.lng}#map=14/${lngLat.lat}/${lngLat.lng}`;
                 alert(`Share this URL to view the location: ${shareableUrl}`);
                 console.log('Shared location URL:', shareableUrl);
             } else {
-                alert('Location not available yet. Please wait for the geolocation to load.');
-            }
-        });
-
-        // Switch Map Style Button
-        document.getElementById('switchMap').addEventListener('click', function() {
-            const currentStyle = map.getStyle().name;
-
-            if (currentStyle === 'Mapbox Light') {
-                map.setStyle('mapbox://styles/mapbox/satellite-v9'); // Switch to Satellite map
-                this.textContent = 'Switch to Light Map'; // Update button text
-            } else {
-                map.setStyle('mapbox://styles/mapbox/light-v10'); // Switch back to Light map
-                this.textContent = 'Switch to Satellite Map'; // Update button text
+                alert('Please select a location on the map first.');
             }
         });
 
@@ -101,14 +99,39 @@
         searchInput.addEventListener('keyup', function(event) {
             const query = event.target.value;
             if (query.length > 2) {
-                // Use Mapbox Geocoding API to search for locations
                 fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${query}.json?access_token=${mapboxgl.accessToken}`)
                     .then(response => response.json())
                     .then(data => {
                         const [lng, lat] = data.features[0].geometry.coordinates;
                         map.flyTo({ center: [lng, lat], zoom: 14 });
+
+                        // Automatically add a marker at the searched location
+                        if (currentMarker) {
+                            currentMarker.remove();
+                        }
+
+                        const popup = new mapboxgl.Popup({ offset: 25 })
+                            .setHTML(`
+                                <h3>Searched Location</h3>
+                                <p>Longitude: ${lng.toFixed(4)}, Latitude: ${lat.toFixed(4)}</p>
+                            `);
+
+                        currentMarker = new mapboxgl.Marker({ color: 'blue' })
+                            .setLngLat([lng, lat])
+                            .setPopup(popup)
+                            .addTo(map);
                     });
             }
+        });
+
+        // Export Map as Image
+        document.getElementById('exportMap').addEventListener('click', function() {
+            html2canvas(document.getElementById('map')).then(canvas => {
+                const link = document.createElement('a');
+                link.download = 'map-screenshot.png';
+                link.href = canvas.toDataURL();
+                link.click();
+            });
         });
     </script>
 </body>
