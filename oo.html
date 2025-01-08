@@ -32,6 +32,10 @@
             </div>
 
             <!-- Buttons -->
+          <button id="streetViewBtn" class="bg-orange-500 text-white p-3 rounded-full shadow-lg hover:bg-orange-600 flex items-center justify-center">
+    <i class="fas fa-street-view text-lg"></i>
+</button>
+
             <button id="toggleStyle" class="bg-gray-500 text-white p-3 rounded-full shadow-lg hover:bg-gray-600 flex items-center justify-center">
                 <i class="fas fa-satellite-dish text-lg"></i>
             </button>
@@ -225,6 +229,45 @@
                 alert('Please enter feedback before submitting.');
             }
         });
+      // Street View Functionality (Simulating with Mapillary integration or panorama)
+document.getElementById('streetViewBtn').addEventListener('click', function() {
+    // For demonstration, we will open a Mapillary viewer popup with a sample location.
+    // Replace with the actual 360-degree street image or Mapillary API integration.
+
+    // Coordinates for a sample location (Phnom Penh or any street view-enabled location)
+    const streetViewCoordinates = [104.8797, 11.5441];
+
+    // Open Mapillary in an iframe or create a popup with the 360-degree image
+    const mapillaryIframe = document.createElement('iframe');
+    mapillaryIframe.src = `https://www.mapillary.com/app/?lat=${streetViewCoordinates[1]}&lng=${streetViewCoordinates[0]}&z=16&panos=2`;
+    mapillaryIframe.style.width = "100%";
+    mapillaryIframe.style.height = "500px";
+    mapillaryIframe.frameBorder = "0";
+
+    // Show the Street View in a modal
+    const streetViewModal = document.createElement('div');
+    streetViewModal.classList.add('fixed', 'top-0', 'left-0', 'right-0', 'bottom-0', 'bg-black', 'bg-opacity-50', 'flex', 'justify-center', 'items-center', 'z-30');
+    streetViewModal.innerHTML = `
+        <div class="bg-white p-4 w-3/4 rounded-lg">
+            <h2 class="text-xl font-bold mb-4">Street View</h2>
+            <div class="relative w-full h-96">
+                ${mapillaryIframe.outerHTML}
+            </div>
+            <button id="closeStreetView" class="absolute top-2 right-2 bg-red-500 text-white p-2 rounded-full hover:bg-red-600">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    `;
+
+    // Append the modal to the body
+    document.body.appendChild(streetViewModal);
+
+    // Close Street View Modal
+    document.getElementById('closeStreetView').addEventListener('click', function() {
+        document.body.removeChild(streetViewModal);
+    });
+});
+
     </script>
 </body>
 </html>
