@@ -54,6 +54,21 @@
             <button id="toggleTraffic" class="bg-red-500 text-white p-3 rounded-full shadow-lg hover:bg-red-600 flex items-center justify-center">
                 <i class="fas fa-road text-lg"></i>
             </button>
+            <button id="feedbackBtn" class="bg-teal-500 text-white p-3 rounded-full shadow-lg hover:bg-teal-600 flex items-center justify-center">
+                <i class="fas fa-comment-dots text-lg"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Feedback Modal -->
+    <div id="feedbackModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-20">
+        <div class="bg-white p-6 rounded-lg w-1/3">
+            <h2 class="text-xl font-bold mb-4">Provide Feedback</h2>
+            <textarea id="feedbackText" class="w-full p-3 border border-gray-300 rounded-lg" rows="4" placeholder="Enter your feedback..."></textarea>
+            <div class="flex justify-end mt-4">
+                <button id="submitFeedback" class="bg-blue-500 text-white p-2 rounded-lg hover:bg-blue-600">Submit</button>
+                <button id="closeFeedback" class="ml-4 bg-gray-300 text-gray-700 p-2 rounded-lg hover:bg-gray-400">Close</button>
+            </div>
         </div>
     </div>
 
@@ -188,6 +203,27 @@
             map.setStyle(isTrafficEnabled 
                 ? 'mapbox://styles/mapbox/traffic-day-v2' 
                 : 'mapbox://styles/mapbox/light-v10');
+        });
+
+        // Feedback Button
+        document.getElementById('feedbackBtn').addEventListener('click', function() {
+            document.getElementById('feedbackModal').classList.remove('hidden');
+        });
+
+        // Close Feedback Modal
+        document.getElementById('closeFeedback').addEventListener('click', function() {
+            document.getElementById('feedbackModal').classList.add('hidden');
+        });
+
+        // Submit Feedback
+        document.getElementById('submitFeedback').addEventListener('click', function() {
+            const feedback = document.getElementById('feedbackText').value;
+            if (feedback) {
+                alert('Feedback submitted: ' + feedback);
+                document.getElementById('feedbackModal').classList.add('hidden');
+            } else {
+                alert('Please enter feedback before submitting.');
+            }
         });
     </script>
 </body>
