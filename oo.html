@@ -182,20 +182,22 @@
             return response.json();
         };
 
-        const showWeatherInfo = async () => {
-            const { lng, lat } = map.getCenter();
-            const weather = await fetchWeatherData(lng, lat);
-            const weatherInfo = `
-                <strong>Weather Information</strong><br>
-                Temperature: ${weather.main.temp} °C<br>
-                Wind Speed: ${weather.wind.speed} m/s<br>
-                Conditions: ${weather.weather[0].description}
-            `;
-            const popup = new mapboxgl.Popup()
-                .setLngLat([lng, lat])
-                .setHTML(weatherInfo)
-                .addTo(map);
-        };
+       const showWeatherInfo = async () => {
+    const { lng, lat } = map.getCenter();
+    const weather = await fetchWeatherData(lng, lat);
+    const weatherInfo = `
+        <div class="bg-white p-4 rounded-lg shadow-lg">
+            <h3 class="text-lg font-bold mb-2">Weather Information</h3>
+            <p><i class="fas fa-temperature-low"></i> Temperature: ${weather.main.temp} °C</p>
+            <p><i class="fas fa-wind"></i> Wind Speed: ${weather.wind.speed} m/s</p>
+            <p><i class="fa-solid fa-smoke"></i> Conditions: ${weather.weather[0].description}</p>
+        </div>
+    `;
+    new mapboxgl.Popup()
+        .setLngLat([lng, lat])
+        .setHTML(weatherInfo)
+        .addTo(map);
+};
 
         document.getElementById('weatherBtn').addEventListener('click', showWeatherInfo);
 
