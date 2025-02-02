@@ -14,10 +14,23 @@
     <style>
         body { margin: 0; padding: 0; }
         #map { position: absolute; top: 0; bottom: 0; width: 100%; }
+      #distanceBox {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: white;
+            padding: 10px 15px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 8px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.3);
+            display: none;
+        }
     </style>
 </head>
 <body class="bg-gray-100">
-
+<div id="distanceBox">Distance: 0 km</div>
     <div class="relative h-screen flex flex-col">
         <!-- Map -->
         <div id="map" class="flex-1"></div>
@@ -93,13 +106,37 @@
             bearing: 0
         });
 
-        
-let startPoint = null;
-let endPoint = null;
+        // Add navigation controls
+        map.addControl(new mapboxgl.NavigationControl());
+
+        // Geolocation Control
+        const geolocate = new mapboxgl.GeolocateControl({
+            positionOptions: { enableHighAccuracy: true },
+            trackUserLocation: true,
+            showUserHeading: true
+        });
+        map.addControl(geolocate);
+        map.on('load', () => geolocate.trigger());
+
+        let currentMarker;
+
+        // Smooth Pan and Zoom Function
+        const smoothPanAndZoom = (lng, lat, zoom) => {
+            map.flyTo({
+                center: [lng, lat],
+                zoom: zoom,
+                speed: 1.5,
+                curve: 1,
+                easing: (t) => t
+            });
+        };
+
+           
+let userLocation = null;
 let markers = [];
 let routeLayerId = "routeLine";
 
-// Function to get route using Mapbox Directions API
+// Function to get route and show distance
 async function getRoute(start, end) {
     const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${start.lng},${start.lat};${end.lng},${end.lat}?geometries=geojson&access_token=${mapboxgl.accessToken}`;
     
@@ -107,6 +144,12 @@ async function getRoute(start, end) {
     const data = await response.json();
     
     const route = data.routes[0].geometry;
+    const distanceMeters = data.routes[0].distance; // Distance in meters
+    const distanceKm = (distanceMeters / 1000).toFixed(2); // Convert to km
+
+    // Update distance box
+    document.getElementById("distanceBox").innerText = `Distance: ${distanceKm} km`;
+    document.getElementById("distanceBox").style.display = "block";
 
     // Add or update route on the map
     if (map.getSource(routeLayerId)) {
@@ -133,30 +176,42 @@ async function getRoute(start, end) {
     }
 }
 
-// Click event for selecting points
+// Get user's current location
+navigator.geolocation.getCurrentPosition(
+    (position) => {
+        userLocation = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+        };
+
+        map.setCenter([userLocation.lng, userLocation.lat]);
+    },
+    (error) => alert("Geolocation access denied. Please allow location access."),
+    { enableHighAccuracy: true }
+);
+
+// Click event for selecting only the endpoint
 map.on('click', (e) => {
-    if (!startPoint) {
-        startPoint = e.lngLat;
-        let startMarker = new mapboxgl.Marker({ color: 'green' })
-            .setLngLat(startPoint)
-            .addTo(map);
-        markers.push(startMarker);
-    } else if (!endPoint) {
-        endPoint = e.lngLat;
-        let endMarker = new mapboxgl.Marker({ color: 'red' })
-            .setLngLat(endPoint)
-            .addTo(map);
-        markers.push(endMarker);
-
-        // Get route following roads
-        getRoute(startPoint, endPoint);
-
-        // Reset points for next calculation
-        startPoint = null;
-        endPoint = null;
+    if (!userLocation) {
+        alert("Waiting for location...");
+        return;
     }
-});
 
+    let endPoint = e.lngLat;
+
+    // Remove previous markers
+    markers.forEach(marker => marker.remove());
+    markers = [];
+
+    let endMarker = new mapboxgl.Marker({ color: 'red' })
+        .setLngLat(endPoint)
+        .addTo(map);
+    markers.push(endMarker);
+
+    // Get route and show distance
+    getRoute(userLocation, endPoint);
+});
+  
 // Reset button to clear everything
 document.getElementById('resetBtn').addEventListener('click', () => {
     markers.forEach(marker => marker.remove());
@@ -168,31 +223,7 @@ document.getElementById('resetBtn').addEventListener('click', () => {
     endPoint = null;
 });
 
-        // Add navigation controls
-        map.addControl(new mapboxgl.NavigationControl());
-
-        // Geolocation Control
-        const geolocate = new mapboxgl.GeolocateControl({
-            positionOptions: { enableHighAccuracy: true },
-            trackUserLocation: true,
-            showUserHeading: true
-        });
-        map.addControl(geolocate);
-        map.on('load', () => geolocate.trigger());
-
-        let currentMarker;
-
-        // Smooth Pan and Zoom Function
-        const smoothPanAndZoom = (lng, lat, zoom) => {
-            map.flyTo({
-                center: [lng, lat],
-                zoom: zoom,
-                speed: 1.5,
-                curve: 1,
-                easing: (t) => t
-            });
-        };
-
+      
         // Toggle Satellite Style
         document.getElementById('toggleStyle').addEventListener('click', function() {
             const isSatellite = map.getStyle().sprite.includes('satellite');
