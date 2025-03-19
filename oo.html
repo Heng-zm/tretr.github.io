@@ -327,44 +327,55 @@ button:hover {
       loadMessages();
     }
 
-    // ✅ Load Messages in Selected Room
-    function loadMessages() {
-      if (!currentRoomId) return;
+    // Load messages for the current room and display them correctly
+function loadMessages() {
+  if (!currentRoomId) return;
 
-      db.collection("messages").where("roomId", "==", currentRoomId)
-        .orderBy("timestamp").onSnapshot(async (snapshot) => {
-          chatContainer.innerHTML = "";
-          for (let doc of snapshot.docs) {
-            const msg = doc.data();
-            const messageDiv = document.createElement("div");
-            messageDiv.classList.add("message");
+  db.collection("messages")
+    .where("roomId", "==", currentRoomId)
+    .orderBy("timestamp")
+    .onSnapshot(snapshot => {
+      chatContainer.innerHTML = ""; // Clear previous messages
 
-            if (msg.senderId === currentUser.uid) {
-              messageDiv.classList.add("user-message");
-            }
+      snapshot.forEach(async (doc) => {
+        const msg = doc.data();
+        const div = document.createElement("div");
+        div.classList.add("message");
 
-            // Fetch sender's name
-            const userDoc = await db.collection("users").doc(msg.senderId).get();
-            const senderName = userDoc.exists ? userDoc.data().displayName : "Unknown User";
+        // Fetch the sender's username from Firestore
+        const userDoc = await db.collection("users").doc(msg.senderId).get();
+        const senderName = userDoc.exists ? userDoc.data().displayName : "Unknown";
 
-            messageDiv.textContent = `${senderName}: ${msg.text}`;
-            chatContainer.appendChild(messageDiv);
-          }
-          chatContainer.scrollTop = chatContainer.scrollHeight;
-        });
-    }
+        // Add message content
+        div.innerHTML = `<strong>${senderName}:</strong> ${msg.text}`;
+        
+        // Highlight user's own messages
+        if (msg.senderId === currentUser.uid) {
+          div.classList.add("user-message");
+        } else {
+          div.classList.add("other-message");
+        }
 
-    // ✅ Send Message
-    sendBtn.addEventListener("click", async () => {
-      if (!currentRoomId) return;
-      await db.collection("messages").add({
-        text: messageInput.value.trim(),
-        senderId: currentUser.uid,
-        roomId: currentRoomId,
-        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        chatContainer.appendChild(div);
       });
-      messageInput.value = "";
+
+      // Auto-scroll to the latest message
+      chatContainer.scrollTop = chatContainer.scrollHeight;
     });
+}
+    sendBtn.addEventListener("click", async () => {
+  const message = messageInput.value.trim();
+  if (message === "" || !currentRoomId) return;
+
+  await db.collection("messages").add({
+    text: message,
+    senderId: currentUser.uid,  // Store sender's ID
+    roomId: currentRoomId,
+    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+  });
+
+  messageInput.value = ""; // Clear input after sending
+});
 
   </script>
 </body>
