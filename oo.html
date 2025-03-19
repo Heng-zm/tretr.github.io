@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Chat App with Location Sharing & Push Notifications</title>
-
+  <title>Chat App with Advanced Messaging Features</title>
+  
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
-
+  
   <!-- Firebase v8 SDKs -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
@@ -16,7 +16,7 @@
 <body class="bg-gray-100 flex justify-center items-center h-screen">
   <div class="w-full max-w-md bg-white shadow-lg rounded-lg p-6">
     <h1 class="text-2xl font-bold text-center mb-4">Chat App</h1>
-
+    
     <!-- Authentication -->
     <div id="auth-container">
       <input type="email" id="email" placeholder="Email" class="w-full p-2 border rounded mb-2" />
@@ -25,49 +25,52 @@
       <button id="login-btn" class="w-full bg-green-500 text-white p-2 rounded hover:bg-green-600 mt-2">Login</button>
       <button id="google-login-btn" class="w-full bg-red-500 text-white p-2 rounded hover:bg-red-600 mt-2">Login with Google</button>
     </div>
-
-    <!-- Profile (Avatar Removed) -->
+    
+    <!-- Profile (Avatar removed) -->
     <div id="profile-container" class="hidden text-center">
       <h3 id="username" class="text-lg font-semibold"></h3>
       <button id="logout-btn" class="bg-red-500 text-white px-4 py-2 rounded mt-2 hover:bg-red-600">Logout</button>
     </div>
-
+    
     <!-- Chat Room -->
     <div id="chat-container-main" class="hidden mt-4">
       <h3 class="text-lg font-bold">Chat Room</h3>
       <div id="chat-container" class="h-60 overflow-y-auto border p-2 rounded bg-gray-100 mb-2"></div>
+      <!-- Typing Indicator -->
+      <div id="typing-indicator" class="text-sm text-gray-500 mt-2"></div>
       <input type="text" id="message-input" placeholder="Type a message..." class="w-full p-2 border rounded" />
       <button id="send-btn" class="w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600 mt-2">Send</button>
       <button id="location-btn" class="w-full bg-green-500 text-white p-2 rounded hover:bg-green-600 mt-2">📍 Share Location</button>
     </div>
   </div>
-
+  
   <script>
-    // Firebase Config (Replace with your own Firebase credentials)
+    // Firebase Config (Replace with your own credentials)
     const firebaseConfig = {
       apiKey: "AIzaSyBU_Q2F0zIMTrIyh5nXERtU3fEtlSX4SH0",
-      authDomain: "mystical-slate-448113-c6.firebaseapp.com",
-      projectId: "mystical-slate-448113-c6",
-      storageBucket: "mystical-slate-448113-c6.firebasestorage.app",
-      messagingSenderId: "681914071632",
-      appId: "1:681914071632:web:35d31b8d1dafb51d51ef55",
-      measurementId: "G-HQSH8R6RF9"
+    authDomain: "mystical-slate-448113-c6.firebaseapp.com",
+    projectId: "mystical-slate-448113-c6",
+    storageBucket: "mystical-slate-448113-c6.firebasestorage.app",
+    messagingSenderId: "681914071632",
+    appId: "1:681914071632:web:35d31b8d1dafb51d51ef55",
+    measurementId: "G-HQSH8R6RF9"
     };
-
+    
     // Initialize Firebase
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
     const db = firebase.firestore();
-
+    
     // DOM Elements
     const authContainer = document.getElementById("auth-container");
     const profileContainer = document.getElementById("profile-container");
     const chatContainerMain = document.getElementById("chat-container-main");
     const chatContainer = document.getElementById("chat-container");
+    const typingIndicator = document.getElementById("typing-indicator");
     const messageInput = document.getElementById("message-input");
     const sendBtn = document.getElementById("send-btn");
     const locationBtn = document.getElementById("location-btn");
-
+    
     const emailInput = document.getElementById("email");
     const passwordInput = document.getElementById("password");
     const registerBtn = document.getElementById("register-btn");
@@ -75,20 +78,10 @@
     const googleLoginBtn = document.getElementById("google-login-btn");
     const logoutBtn = document.getElementById("logout-btn");
     const usernameElem = document.getElementById("username");
-
+    
     let currentUser = null;
-
-    // Request notification permission
-    function requestNotificationPermission() {
-      if ("Notification" in window && Notification.permission !== "granted") {
-        Notification.requestPermission().then(permission => {
-          if (permission === "granted") {
-            console.log("Notification permission granted.");
-          }
-        });
-      }
-    }
-
+    let typingTimeout;
+    
     // Register User
     registerBtn.addEventListener("click", async () => {
       const email = emailInput.value;
@@ -100,7 +93,7 @@
         alert(error.message);
       }
     });
-
+    
     // Login User
     loginBtn.addEventListener("click", async () => {
       const email = emailInput.value;
@@ -111,7 +104,7 @@
         alert(error.message);
       }
     });
-
+    
     // Google Login
     googleLoginBtn.addEventListener("click", async () => {
       const provider = new firebase.auth.GoogleAuthProvider();
@@ -121,63 +114,119 @@
         alert(error.message);
       }
     });
-
+    
     // Logout
     logoutBtn.addEventListener("click", async () => {
       await auth.signOut();
     });
-
-    // Auth State Change
-    auth.onAuthStateChanged(async (user) => {
-      if (user) {
-        currentUser = user;
-        authContainer.classList.add("hidden");
-        profileContainer.classList.remove("hidden");
-        chatContainerMain.classList.remove("hidden");
-        usernameElem.textContent = user.displayName || user.email;
-        requestNotificationPermission();
-        loadMessages();
+    
+    // Typing indicator update: When user types, set their "typing" status in Firestore.
+    messageInput.addEventListener("input", () => {
+      if (!currentUser) return;
+      // Update current user's typing status
+      db.collection("typing").doc(currentUser.uid).set({
+        username: currentUser.displayName || currentUser.email,
+        isTyping: messageInput.value.length > 0,
+        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      
+      // Clear any previous timeout and reset typing status after 2 seconds of inactivity
+      clearTimeout(typingTimeout);
+      typingTimeout = setTimeout(() => {
+        db.collection("typing").doc(currentUser.uid).set({
+          username: currentUser.displayName || currentUser.email,
+          isTyping: false,
+          timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      }, 2000);
+    });
+    
+    // Listen for typing status from other users
+    db.collection("typing").onSnapshot(snapshot => {
+      let typingUsers = [];
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        if (doc.id !== (currentUser && currentUser.uid) && data.isTyping) {
+          typingUsers.push(data.username);
+        }
+      });
+      if (typingUsers.length > 0) {
+        typingIndicator.textContent = typingUsers.join(", ") + " is typing...";
       } else {
-        currentUser = null;
-        authContainer.classList.remove("hidden");
-        profileContainer.classList.add("hidden");
-        chatContainerMain.classList.add("hidden");
+        typingIndicator.textContent = "";
       }
     });
-
-    // Load Messages with Push Notification for new messages
+    
+    // Load Messages, handle read receipts and reactions
     function loadMessages() {
       db.collection("messages").orderBy("timestamp")
-        .onSnapshot((snapshot) => {
-          snapshot.docChanges().forEach(change => {
-            if (change.type === "added") {
-              const msg = change.doc.data();
-              // Create and append message element
-              const div = document.createElement("div");
-              div.classList.add("p-2", "rounded", "mb-2", "text-sm", "bg-white", "shadow");
-              if (msg.senderId === currentUser.uid) {
-                div.classList.add("bg-blue-100", "text-right");
+        .onSnapshot(snapshot => {
+          chatContainer.innerHTML = "";
+          snapshot.forEach(doc => {
+            const msg = doc.data();
+            const messageId = doc.id;
+            const div = document.createElement("div");
+            div.classList.add("p-2", "rounded", "mb-2", "text-sm", "bg-white", "shadow", "relative");
+            
+            // Apply style if sent by current user
+            if (msg.senderId === currentUser.uid) {
+              div.classList.add("bg-blue-100", "text-right");
+            }
+            
+            // Build message content
+            let messageContent = `<strong>${msg.senderName}:</strong> `;
+            if (msg.location) {
+              messageContent += `<br><a href="${msg.location}" target="_blank" class="text-blue-500 underline">📍 View Location</a>`;
+            } else {
+              messageContent += msg.text;
+            }
+            // Append read receipt for messages sent by current user
+            if (msg.senderId === currentUser.uid && msg.read) {
+              messageContent += ` <span class="text-xs text-green-500">✓ Seen</span>`;
+            }
+            
+            // Append reactions if any
+            if (msg.reactions) {
+              let reactionsText = "";
+              for (let emoji in msg.reactions) {
+                reactionsText += `${emoji} ${msg.reactions[emoji]} `;
               }
-              if (msg.location) {
-                div.innerHTML = `<strong>${msg.senderName}:</strong> <br>
-                  <a href="${msg.location}" target="_blank" class="text-blue-500 underline">📍 View Location</a>`;
-              } else {
-                div.innerHTML = `<strong>${msg.senderName}:</strong> ${msg.text}`;
-              }
-              chatContainer.appendChild(div);
-              chatContainer.scrollTop = chatContainer.scrollHeight;
-
-              // Show notification if the message is from another user and permission is granted
-              if (msg.senderId !== currentUser.uid && Notification.permission === "granted") {
-                new Notification("New message from " + msg.senderName, {
-                  body: msg.text || "Location shared"
-                });
-              }
+              messageContent += `<div class="text-xs mt-1">${reactionsText}</div>`;
+            }
+            
+            div.innerHTML = messageContent;
+            
+            // Add reaction button (e.g., thumbs up)
+            const reactionBtn = document.createElement("button");
+            reactionBtn.textContent = "👍";
+            reactionBtn.classList.add("absolute", "bottom-0", "right-0", "text-sm", "hover:opacity-75");
+            reactionBtn.addEventListener("click", () => addReaction(messageId, "👍"));
+            div.appendChild(reactionBtn);
+            
+            chatContainer.appendChild(div);
+            
+            // If message is not sent by current user and not yet marked as read, update it
+            if (msg.senderId !== currentUser.uid && !msg.read) {
+              db.collection("messages").doc(messageId).update({
+                read: true
+              });
             }
           });
+          chatContainer.scrollTop = chatContainer.scrollHeight;
         });
     }
-
+    
+    // Function to add a reaction to a message
+    function addReaction(messageId, emoji) {
+      const messageRef = db.collection("messages").doc(messageId);
+      messageRef.update({
+        // Using Firestore FieldValue.increment to update count
+        [`reactions.${emoji}`]: firebase.firestore.FieldValue.increment(1)
+      }).catch(error => {
+        console.error("Error adding reaction: ", error);
+      });
+    }
+    
     // Send Message
     sendBtn.addEventListener("click", async () => {
       const message = messageInput.value.trim();
@@ -186,11 +235,12 @@
         text: message,
         senderId: currentUser.uid,
         senderName: currentUser.displayName || currentUser.email,
-        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+        read: false  // Initially, message is not read by recipients
       });
       messageInput.value = "";
     });
-
+    
     // Share Location
     locationBtn.addEventListener("click", async () => {
       if (!navigator.geolocation) return alert("Geolocation is not supported!");
@@ -200,9 +250,27 @@
           location: locationURL,
           senderId: currentUser.uid,
           senderName: currentUser.displayName || currentUser.email,
-          timestamp: firebase.firestore.FieldValue.serverTimestamp()
+          timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+          read: false
         });
       });
+    });
+    
+    // Auth State Change
+    auth.onAuthStateChanged(async (user) => {
+      if (user) {
+        currentUser = user;
+        authContainer.classList.add("hidden");
+        profileContainer.classList.remove("hidden");
+        chatContainerMain.classList.remove("hidden");
+        usernameElem.textContent = user.displayName || user.email;
+        loadMessages();
+      } else {
+        currentUser = null;
+        authContainer.classList.remove("hidden");
+        profileContainer.classList.add("hidden");
+        chatContainerMain.classList.add("hidden");
+      }
     });
   </script>
 </body>
