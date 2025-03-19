@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Chat App with Location Sharing</title>
+  <title>Group Chat with Firebase</title>
 
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -16,7 +16,7 @@
 <body class="bg-gray-100 flex justify-center items-center h-screen">
   
   <div class="w-full max-w-md bg-white shadow-lg rounded-lg p-6">
-    <h1 class="text-2xl font-bold text-center mb-4">Chat App</h1>
+    <h1 class="text-2xl font-bold text-center mb-4">Group Chat</h1>
 
     <!-- Authentication -->
     <div id="auth-container">
@@ -34,13 +34,23 @@
       <button id="logout-btn" class="bg-red-500 text-white px-4 py-2 rounded mt-2 hover:bg-red-600">Logout</button>
     </div>
 
+    <!-- Group Chat -->
+    <div id="group-container" class="hidden mt-4">
+      <h3 class="text-lg font-bold">Groups</h3>
+      <input type="text" id="group-name" placeholder="New Group Name" class="w-full p-2 border rounded mb-2">
+      <button id="create-group-btn" class="w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600">Create Group</button>
+      
+      <h3 class="text-lg font-bold mt-4">Join a Group</h3>
+      <select id="group-select" class="w-full p-2 border rounded mb-2"></select>
+      <button id="join-group-btn" class="w-full bg-green-500 text-white p-2 rounded hover:bg-green-600">Join Group</button>
+    </div>
+
     <!-- Chat Room -->
     <div id="chat-container-main" class="hidden mt-4">
-      <h3 class="text-lg font-bold">Chat Room</h3>
+      <h3 id="current-group" class="text-lg font-bold">Chat Room</h3>
       <div id="chat-container" class="h-60 overflow-y-auto border p-2 rounded bg-gray-100 mb-2"></div>
       <input type="text" id="message-input" placeholder="Type a message..." class="w-full p-2 border rounded">
       <button id="send-btn" class="w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600 mt-2">Send</button>
-      <button id="location-btn" class="w-full bg-green-500 text-white p-2 rounded hover:bg-green-600 mt-2">📍 Share Location</button>
     </div>
   </div>
 
@@ -64,11 +74,16 @@
     // DOM Elements
     const authContainer = document.getElementById("auth-container");
     const profileContainer = document.getElementById("profile-container");
+    const groupContainer = document.getElementById("group-container");
     const chatContainerMain = document.getElementById("chat-container-main");
     const chatContainer = document.getElementById("chat-container");
     const messageInput = document.getElementById("message-input");
     const sendBtn = document.getElementById("send-btn");
-    const locationBtn = document.getElementById("location-btn");
+
+    const groupNameInput = document.getElementById("group-name");
+    const createGroupBtn = document.getElementById("create-group-btn");
+    const groupSelect = document.getElementById("group-select");
+    const joinGroupBtn = document.getElementById("join-group-btn");
 
     const emailInput = document.getElementById("email");
     const passwordInput = document.getElementById("password");
@@ -78,8 +93,10 @@
     const logoutBtn = document.getElementById("logout-btn");
     const avatarElem = document.getElementById("avatar");
     const usernameElem = document.getElementById("username");
+    const currentGroupElem = document.getElementById("current-group");
 
     let currentUser = null;
+    let currentGroup = null;
 
     // Register User
     registerBtn.addEventListener("click", async () => {
@@ -125,49 +142,54 @@
         currentUser = user;
         authContainer.classList.add("hidden");
         profileContainer.classList.remove("hidden");
-        chatContainerMain.classList.remove("hidden");
+        groupContainer.classList.remove("hidden");
         usernameElem.textContent = user.displayName || user.email;
         avatarElem.src = user.photoURL || "https://via.placeholder.com/50";
-        loadMessages();
+        loadGroups();
       } else {
         currentUser = null;
         authContainer.classList.remove("hidden");
         profileContainer.classList.add("hidden");
+        groupContainer.classList.add("hidden");
         chatContainerMain.classList.add("hidden");
       }
     });
 
-    // Load Messages
-    function loadMessages() {
-      db.collection("messages").orderBy("timestamp").onSnapshot((snapshot) => {
-        chatContainer.innerHTML = "";
-        snapshot.forEach(doc => {
-          const msg = doc.data();
-          const div = document.createElement("div");
-          div.classList.add("p-2", "rounded", "mb-2", "text-sm", "bg-white", "shadow");
+    // Create Group
+    createGroupBtn.addEventListener("click", async () => {
+      const name = groupNameInput.value.trim();
+      if (!name) return alert("Enter a group name!");
+      await db.collection("groups").add({ name });
+      groupNameInput.value = "";
+      loadGroups();
+    });
 
-          if (msg.senderId === currentUser.uid) {
-            div.classList.add("bg-blue-100", "text-right");
-          }
-
-          if (msg.location) {
-            div.innerHTML = `<strong>${msg.senderName}:</strong> <br> 
-              <a href="${msg.location}" target="_blank" class="text-blue-500 underline">📍 View Location</a>`;
-          } else {
-            div.innerHTML = `<strong>${msg.senderName}:</strong> ${msg.text}`;
-          }
-
-          chatContainer.appendChild(div);
-        });
-        chatContainer.scrollTop = chatContainer.scrollHeight;
+    // Load Groups
+    async function loadGroups() {
+      const snapshot = await db.collection("groups").get();
+      groupSelect.innerHTML = "";
+      snapshot.forEach(doc => {
+        const option = document.createElement("option");
+        option.value = doc.id;
+        option.textContent = doc.data().name;
+        groupSelect.appendChild(option);
       });
     }
 
+    // Join Group
+    joinGroupBtn.addEventListener("click", () => {
+      currentGroup = groupSelect.value;
+      currentGroupElem.textContent = `Group: ${groupSelect.options[groupSelect.selectedIndex].text}`;
+      chatContainerMain.classList.remove("hidden");
+      loadMessages();
+    });
+
     // Send Message
     sendBtn.addEventListener("click", async () => {
+      if (!currentGroup) return;
       const message = messageInput.value.trim();
-      if (message === "") return;
-      await db.collection("messages").add({
+      if (!message) return;
+      await db.collection(`groups/${currentGroup}/messages`).add({
         text: message,
         senderId: currentUser.uid,
         senderName: currentUser.displayName || currentUser.email,
@@ -175,22 +197,6 @@
       });
       messageInput.value = "";
     });
-
-    // Share Location
-    locationBtn.addEventListener("click", async () => {
-      if (!navigator.geolocation) return alert("Geolocation is not supported!");
-
-      navigator.geolocation.getCurrentPosition(async (position) => {
-        const locationURL = `https://www.google.com/maps?q=${position.coords.latitude},${position.coords.longitude}`;
-        await db.collection("messages").add({
-          location: locationURL,
-          senderId: currentUser.uid,
-          senderName: currentUser.displayName || currentUser.email,
-          timestamp: firebase.firestore.FieldValue.serverTimestamp()
-        });
-      });
-    });
-
   </script>
 </body>
 </html>
