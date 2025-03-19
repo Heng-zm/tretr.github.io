@@ -3,16 +3,15 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Chat App with Profile Picture Upload & Location Sharing</title>
+  <title>Chat App with Location Sharing & Push Notifications</title>
 
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
 
-  <!-- Firebase v8 SDK -->
+  <!-- Firebase v8 SDKs -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
 </head>
 <body class="bg-gray-100 flex justify-center items-center h-screen">
   <div class="w-full max-w-md bg-white shadow-lg rounded-lg p-6">
@@ -27,15 +26,9 @@
       <button id="google-login-btn" class="w-full bg-red-500 text-white p-2 rounded hover:bg-red-600 mt-2">Login with Google</button>
     </div>
 
-    <!-- Profile -->
+    <!-- Profile (Avatar Removed) -->
     <div id="profile-container" class="hidden text-center">
-      <img id="avatar" src="https://via.placeholder.com/50" class="w-16 h-16 rounded-full mx-auto mb-2" />
       <h3 id="username" class="text-lg font-semibold"></h3>
-      <!-- Profile Picture Upload -->
-      <input type="file" id="profile-picture-input" class="w-full p-2 border rounded mb-2" />
-      <button id="upload-profile-btn" class="w-full bg-indigo-500 text-white p-2 rounded hover:bg-indigo-600 mt-2">
-        Upload Profile Picture
-      </button>
       <button id="logout-btn" class="bg-red-500 text-white px-4 py-2 rounded mt-2 hover:bg-red-600">Logout</button>
     </div>
 
@@ -50,22 +43,21 @@
   </div>
 
   <script>
-    // Firebase Config (Replace with your credentials)
+    // Firebase Config (Replace with your own Firebase credentials)
     const firebaseConfig = {
       apiKey: "AIzaSyBU_Q2F0zIMTrIyh5nXERtU3fEtlSX4SH0",
-    authDomain: "mystical-slate-448113-c6.firebaseapp.com",
-    projectId: "mystical-slate-448113-c6",
-    storageBucket: "mystical-slate-448113-c6.firebasestorage.app",
-    messagingSenderId: "681914071632",
-    appId: "1:681914071632:web:35d31b8d1dafb51d51ef55",
-    measurementId: "G-HQSH8R6RF9"
+      authDomain: "mystical-slate-448113-c6.firebaseapp.com",
+      projectId: "mystical-slate-448113-c6",
+      storageBucket: "mystical-slate-448113-c6.firebasestorage.app",
+      messagingSenderId: "681914071632",
+      appId: "1:681914071632:web:35d31b8d1dafb51d51ef55",
+      measurementId: "G-HQSH8R6RF9"
     };
 
     // Initialize Firebase
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
     const db = firebase.firestore();
-    const storage = firebase.storage();
 
     // DOM Elements
     const authContainer = document.getElementById("auth-container");
@@ -82,13 +74,20 @@
     const loginBtn = document.getElementById("login-btn");
     const googleLoginBtn = document.getElementById("google-login-btn");
     const logoutBtn = document.getElementById("logout-btn");
-
-    const avatarElem = document.getElementById("avatar");
     const usernameElem = document.getElementById("username");
-    const profilePicInput = document.getElementById("profile-picture-input");
-    const uploadProfileBtn = document.getElementById("upload-profile-btn");
 
     let currentUser = null;
+
+    // Request notification permission
+    function requestNotificationPermission() {
+      if ("Notification" in window && Notification.permission !== "granted") {
+        Notification.requestPermission().then(permission => {
+          if (permission === "granted") {
+            console.log("Notification permission granted.");
+          }
+        });
+      }
+    }
 
     // Register User
     registerBtn.addEventListener("click", async () => {
@@ -128,29 +127,6 @@
       await auth.signOut();
     });
 
-    // Upload Profile Picture
-    uploadProfileBtn.addEventListener("click", async () => {
-      const file = profilePicInput.files[0];
-      if (!file) {
-        alert("Please select a file first.");
-        return;
-      }
-      try {
-        // Upload to Firebase Storage under "profilePictures/{userId}/profile.jpg"
-        const storageRef = storage.ref(`profilePictures/${currentUser.uid}/profile.jpg`);
-        await storageRef.put(file);
-        const photoURL = await storageRef.getDownloadURL();
-        // Update Firebase Auth user profile
-        await currentUser.updateProfile({ photoURL });
-        // Optionally update Firestore if needed
-        await db.collection("users").doc(currentUser.uid).update({ photoURL });
-        avatarElem.src = photoURL;
-        alert("Profile picture updated!");
-      } catch (error) {
-        alert(error.message);
-      }
-    });
-
     // Auth State Change
     auth.onAuthStateChanged(async (user) => {
       if (user) {
@@ -159,7 +135,7 @@
         profileContainer.classList.remove("hidden");
         chatContainerMain.classList.remove("hidden");
         usernameElem.textContent = user.displayName || user.email;
-        avatarElem.src = user.photoURL || "https://via.placeholder.com/50";
+        requestNotificationPermission();
         loadMessages();
       } else {
         currentUser = null;
@@ -169,28 +145,36 @@
       }
     });
 
-    // Load Messages
+    // Load Messages with Push Notification for new messages
     function loadMessages() {
-      db.collection("messages")
-        .orderBy("timestamp")
+      db.collection("messages").orderBy("timestamp")
         .onSnapshot((snapshot) => {
-          chatContainer.innerHTML = "";
-          snapshot.forEach((doc) => {
-            const msg = doc.data();
-            const div = document.createElement("div");
-            div.classList.add("p-2", "rounded", "mb-2", "text-sm", "bg-white", "shadow");
-            if (msg.senderId === currentUser.uid) {
-              div.classList.add("bg-blue-100", "text-right");
+          snapshot.docChanges().forEach(change => {
+            if (change.type === "added") {
+              const msg = change.doc.data();
+              // Create and append message element
+              const div = document.createElement("div");
+              div.classList.add("p-2", "rounded", "mb-2", "text-sm", "bg-white", "shadow");
+              if (msg.senderId === currentUser.uid) {
+                div.classList.add("bg-blue-100", "text-right");
+              }
+              if (msg.location) {
+                div.innerHTML = `<strong>${msg.senderName}:</strong> <br>
+                  <a href="${msg.location}" target="_blank" class="text-blue-500 underline">📍 View Location</a>`;
+              } else {
+                div.innerHTML = `<strong>${msg.senderName}:</strong> ${msg.text}`;
+              }
+              chatContainer.appendChild(div);
+              chatContainer.scrollTop = chatContainer.scrollHeight;
+
+              // Show notification if the message is from another user and permission is granted
+              if (msg.senderId !== currentUser.uid && Notification.permission === "granted") {
+                new Notification("New message from " + msg.senderName, {
+                  body: msg.text || "Location shared"
+                });
+              }
             }
-            if (msg.location) {
-              div.innerHTML = `<strong>${msg.senderName}:</strong> <br>
-                <a href="${msg.location}" target="_blank" class="text-blue-500 underline">📍 View Location</a>`;
-            } else {
-              div.innerHTML = `<strong>${msg.senderName}:</strong> ${msg.text}`;
-            }
-            chatContainer.appendChild(div);
           });
-          chatContainer.scrollTop = chatContainer.scrollHeight;
         });
     }
 
