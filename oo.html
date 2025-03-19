@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Firebase Chat App</title>
+  <title>Chat App with Location Sharing</title>
 
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
 
-  <!-- Firebase SDK -->
+  <!-- Firebase v8 -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
@@ -22,24 +22,16 @@
     <div id="auth-container">
       <input type="email" id="email" placeholder="Email" class="w-full p-2 border rounded mb-2">
       <input type="password" id="password" placeholder="Password" class="w-full p-2 border rounded mb-2">
-      <button id="register-btn" class="w-full bg-blue-500 text-white p-2 rounded">Register</button>
-      <button id="login-btn" class="w-full bg-green-500 text-white p-2 rounded mt-2">Login</button>
-      <button id="google-login-btn" class="w-full bg-red-500 text-white p-2 rounded mt-2">Login with Google</button>
+      <button id="register-btn" class="w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600">Register</button>
+      <button id="login-btn" class="w-full bg-green-500 text-white p-2 rounded hover:bg-green-600 mt-2">Login</button>
+      <button id="google-login-btn" class="w-full bg-red-500 text-white p-2 rounded hover:bg-red-600 mt-2">Login with Google</button>
     </div>
 
     <!-- Profile -->
     <div id="profile-container" class="hidden text-center">
       <img id="avatar" src="" class="w-16 h-16 rounded-full mx-auto mb-2">
       <h3 id="username" class="text-lg font-semibold"></h3>
-      <button id="logout-btn" class="bg-red-500 text-white px-4 py-2 rounded mt-2">Logout</button>
-    </div>
-
-    <!-- Group Chat -->
-    <div id="group-container" class="hidden mt-4">
-      <h3 class="text-lg font-bold">Groups</h3>
-      <input type="text" id="group-name" placeholder="New Group Name" class="w-full p-2 border rounded mb-2">
-      <button id="create-group-btn" class="w-full bg-blue-500 text-white p-2 rounded">Create Group</button>
-      <ul id="group-list" class="mt-2"></ul>
+      <button id="logout-btn" class="bg-red-500 text-white px-4 py-2 rounded mt-2 hover:bg-red-600">Logout</button>
     </div>
 
     <!-- Chat Room -->
@@ -47,12 +39,13 @@
       <h3 class="text-lg font-bold">Chat Room</h3>
       <div id="chat-container" class="h-60 overflow-y-auto border p-2 rounded bg-gray-100 mb-2"></div>
       <input type="text" id="message-input" placeholder="Type a message..." class="w-full p-2 border rounded">
-      <button id="send-btn" class="w-full bg-blue-500 text-white p-2 rounded mt-2">Send</button>
+      <button id="send-btn" class="w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600 mt-2">Send</button>
+      <button id="location-btn" class="w-full bg-green-500 text-white p-2 rounded hover:bg-green-600 mt-2">📍 Share Location</button>
     </div>
   </div>
 
   <script>
-    // Firebase Config (Replace with your credentials)
+    // Firebase Config (Replace with your own Firebase credentials)
     const firebaseConfig = {
       apiKey: "AIzaSyBU_Q2F0zIMTrIyh5nXERtU3fEtlSX4SH0",
     authDomain: "mystical-slate-448113-c6.firebaseapp.com",
@@ -71,12 +64,11 @@
     // DOM Elements
     const authContainer = document.getElementById("auth-container");
     const profileContainer = document.getElementById("profile-container");
-    const groupContainer = document.getElementById("group-container");
     const chatContainerMain = document.getElementById("chat-container-main");
     const chatContainer = document.getElementById("chat-container");
     const messageInput = document.getElementById("message-input");
     const sendBtn = document.getElementById("send-btn");
-    const groupList = document.getElementById("group-list");
+    const locationBtn = document.getElementById("location-btn");
 
     const emailInput = document.getElementById("email");
     const passwordInput = document.getElementById("password");
@@ -84,17 +76,17 @@
     const loginBtn = document.getElementById("login-btn");
     const googleLoginBtn = document.getElementById("google-login-btn");
     const logoutBtn = document.getElementById("logout-btn");
+    const avatarElem = document.getElementById("avatar");
+    const usernameElem = document.getElementById("username");
 
     let currentUser = null;
-    let currentGroup = null;
 
     // Register User
     registerBtn.addEventListener("click", async () => {
       const email = emailInput.value;
       const password = passwordInput.value;
       try {
-        const userCredential = await auth.createUserWithEmailAndPassword(email, password);
-        await db.collection("users").doc(userCredential.user.uid).set({ email, role: "member" });
+        await auth.createUserWithEmailAndPassword(email, password);
         alert("Registration successful! Please log in.");
       } catch (error) {
         alert(error.message);
@@ -112,6 +104,16 @@
       }
     });
 
+    // Google Login
+    googleLoginBtn.addEventListener("click", async () => {
+      const provider = new firebase.auth.GoogleAuthProvider();
+      try {
+        await auth.signInWithPopup(provider);
+      } catch (error) {
+        alert(error.message);
+      }
+    });
+
     // Logout
     logoutBtn.addEventListener("click", async () => {
       await auth.signOut();
@@ -123,66 +125,72 @@
         currentUser = user;
         authContainer.classList.add("hidden");
         profileContainer.classList.remove("hidden");
-        groupContainer.classList.remove("hidden");
+        chatContainerMain.classList.remove("hidden");
         usernameElem.textContent = user.displayName || user.email;
-        loadGroups();
+        avatarElem.src = user.photoURL || "https://via.placeholder.com/50";
+        loadMessages();
       } else {
         currentUser = null;
         authContainer.classList.remove("hidden");
         profileContainer.classList.add("hidden");
-        groupContainer.classList.add("hidden");
         chatContainerMain.classList.add("hidden");
       }
     });
 
-    // Load Groups
-    function loadGroups() {
-      db.collection("groups").onSnapshot(snapshot => {
-        groupList.innerHTML = "";
-        snapshot.forEach(doc => {
-          const group = doc.data();
-          const li = document.createElement("li");
-          li.textContent = group.name;
-          li.classList.add("cursor-pointer", "p-2", "border", "rounded", "mt-2");
-          li.addEventListener("click", () => joinGroup(doc.id));
-          groupList.appendChild(li);
-        });
-      });
-    }
-
-    // Create Group
-    document.getElementById("create-group-btn").addEventListener("click", async () => {
-      const groupName = document.getElementById("group-name").value.trim();
-      if (groupName === "") return;
-      await db.collection("groups").add({ name: groupName });
-    });
-
-    // Join Group
-    function joinGroup(groupId) {
-      currentGroup = groupId;
-      chatContainerMain.classList.remove("hidden");
-      loadMessages();
-    }
-
     // Load Messages
     function loadMessages() {
-      db.collection("groups").doc(currentGroup).collection("messages").orderBy("timestamp").onSnapshot(snapshot => {
+      db.collection("messages").orderBy("timestamp").onSnapshot((snapshot) => {
         chatContainer.innerHTML = "";
         snapshot.forEach(doc => {
-          chatContainer.innerHTML += `<div>${doc.data().text}</div>`;
+          const msg = doc.data();
+          const div = document.createElement("div");
+          div.classList.add("p-2", "rounded", "mb-2", "text-sm", "bg-white", "shadow");
+
+          if (msg.senderId === currentUser.uid) {
+            div.classList.add("bg-blue-100", "text-right");
+          }
+
+          if (msg.location) {
+            div.innerHTML = `<strong>${msg.senderName}:</strong> <br> 
+              <a href="${msg.location}" target="_blank" class="text-blue-500 underline">📍 View Location</a>`;
+          } else {
+            div.innerHTML = `<strong>${msg.senderName}:</strong> ${msg.text}`;
+          }
+
+          chatContainer.appendChild(div);
         });
+        chatContainer.scrollTop = chatContainer.scrollHeight;
       });
     }
 
     // Send Message
     sendBtn.addEventListener("click", async () => {
-      if (!currentGroup) return;
-      await db.collection("groups").doc(currentGroup).collection("messages").add({
-        text: messageInput.value,
+      const message = messageInput.value.trim();
+      if (message === "") return;
+      await db.collection("messages").add({
+        text: message,
+        senderId: currentUser.uid,
+        senderName: currentUser.displayName || currentUser.email,
         timestamp: firebase.firestore.FieldValue.serverTimestamp()
       });
       messageInput.value = "";
     });
+
+    // Share Location
+    locationBtn.addEventListener("click", async () => {
+      if (!navigator.geolocation) return alert("Geolocation is not supported!");
+
+      navigator.geolocation.getCurrentPosition(async (position) => {
+        const locationURL = `https://www.google.com/maps?q=${position.coords.latitude},${position.coords.longitude}`;
+        await db.collection("messages").add({
+          location: locationURL,
+          senderId: currentUser.uid,
+          senderName: currentUser.displayName || currentUser.email,
+          timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      });
+    });
+
   </script>
 </body>
 </html>
