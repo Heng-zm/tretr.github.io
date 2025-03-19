@@ -3,217 +3,108 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Chat App with Rooms & Profiles</title>
+  <title>Chat App with Firebase</title>
+
+  <!-- Firebase v8 -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
   <style>
-    /* 🌙 Dark & Light Mode */
-:root {
-  --bg-color: #f4f4f4;
-  --text-color: #333;
-  --chat-bg: #fff;
-  --message-bg: #e3f2fd;
-  --my-message-bg: #dcf8c6;
-  --button-bg: #6200ea;
-  --button-hover: #3700b3;
-}
-
-.dark-mode {
-  --bg-color: #121212;
-  --text-color: #fff;
-  --chat-bg: #1e1e1e;
-  --message-bg: #333;
-  --my-message-bg: #4caf50;
-  --button-bg: #bb86fc;
-  --button-hover: #9f6df1;
-}
-
-/* 🎨 General Styles */
-body {
-  font-family: 'Poppins', sans-serif;
-  background: var(--bg-color);
-  color: var(--text-color);
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  transition: 0.3s ease-in-out;
-}
-
-h1 {
-  text-align: center;
-  margin-bottom: 10px;
-}
-
-/* 📜 Chat Container */
-.container {
-  display: flex;
-  width: 80%;
-  max-width: 900px;
-  height: 500px;
-  background: var(--chat-bg);
-  border-radius: 10px;
-  overflow: hidden;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-}
-
-/* 📌 Sidebar */
-.sidebar {
-  width: 250px;
-  background: #6200ea;
-  color: white;
-  padding: 20px;
-  overflow-y: auto;
-}
-
-.sidebar h3 {
-  margin-bottom: 10px;
-}
-
-.sidebar ul {
-  list-style: none;
-  padding: 0;
-}
-
-.sidebar li {
-  background: rgba(255, 255, 255, 0.1);
-  padding: 10px;
-  border-radius: 5px;
-  margin: 5px 0;
-  cursor: pointer;
-  transition: 0.2s;
-}
-
-.sidebar li:hover {
-  background: rgba(255, 255, 255, 0.2);
-}
-
-/* 💬 Chat Area */
-.chat-area {
-  flex-grow: 1;
-  display: flex;
-  flex-direction: column;
-  padding: 20px;
-}
-
-/* 🔄 Chat Messages */
-#chat-container {
-  flex-grow: 1;
-  overflow-y: auto;
-  padding: 10px;
-  border-radius: 10px;
-  background: var(--chat-bg);
-}
-
-/* 🗨️ Chat Bubbles */
-.message {
-  max-width: 70%;
-  padding: 10px;
-  border-radius: 10px;
-  margin-bottom: 10px;
-  position: relative;
-  display: inline-block;
-}
-
-.user-message {
-  background: var(--my-message-bg);
-  align-self: flex-end;
-  text-align: right;
-}
-
-.other-message {
-  background: var(--message-bg);
-}
-
-.message span {
-  display: block;
-  font-size: 12px;
-  opacity: 0.7;
-  margin-top: 3px;
-}
-
-/* 📝 Input & Buttons */
-.input-container {
-  display: flex;
-  gap: 10px;
-  margin-top: 10px;
-}
-
-input {
-  flex-grow: 1;
-  padding: 12px;
-  border: none;
-  border-radius: 5px;
-  outline: none;
-}
-
-button {
-  background: var(--button-bg);
-  color: white;
-  border: none;
-  padding: 12px 15px;
-  cursor: pointer;
-  border-radius: 5px;
-  transition: 0.2s;
-}
-
-button:hover {
-  background: var(--button-hover);
-}
-
-/* 🌙 Dark Mode Toggle */
-.dark-mode-toggle {
-  margin-top: 10px;
-  padding: 10px;
-  background: var(--button-bg);
-  color: white;
-  border: none;
-  cursor: pointer;
-  border-radius: 5px;
-  transition: 0.2s;
-}
-
-.dark-mode-toggle:hover {
-  background: var(--button-hover);
-}
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      background-color: #f4f4f4;
+      margin: 0;
+      padding: 0;
+    }
+    h1 { margin-top: 20px; }
+    .container {
+      width: 100%;
+      max-width: 400px;
+      margin: auto;
+      background: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+    }
+    #chat-container {
+      height: 300px;
+      overflow-y: scroll;
+      border: 1px solid #ccc;
+      padding: 10px;
+      margin-bottom: 10px;
+      background: #fafafa;
+    }
+    .message {
+      padding: 8px;
+      margin: 5px;
+      border-radius: 5px;
+      background: #e1f5fe;
+      text-align: left;
+    }
+    .user-message {
+      background: #b2dfdb;
+      text-align: right;
+    }
+    input, button {
+      width: calc(100% - 22px);
+      padding: 10px;
+      margin-top: 10px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+    button {
+      background-color: #007BFF;
+      color: white;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+    #profile {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    #avatar {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      margin-bottom: 5px;
+    }
   </style>
 </head>
 <body>
-  <h1>Chat App with Rooms & Profiles</h1>
+  <h1>Chat App</h1>
 
-  <!-- Login & Registration Form -->
-  <div id="auth-section">
-    <h3>Login / Register</h3>
-    <input type="email" id="email" placeholder="Enter email" required>
-    <input type="password" id="password" placeholder="Enter password" required>
+  <!-- Login/Register -->
+  <div class="container" id="auth-container">
+    <input type="email" id="email" placeholder="Email">
+    <input type="password" id="password" placeholder="Password">
     <button id="register-btn">Register</button>
     <button id="login-btn">Login</button>
-    <button id="logout-btn" style="display: none;">Logout</button>
+    <button id="google-login-btn">Login with Google</button>
   </div>
 
-  <!-- Main Chat Container -->
+  <!-- Profile -->
+  <div class="container" id="profile-container" style="display: none;">
+    <div id="profile">
+      <img id="avatar" src="" alt="Avatar">
+      <h3 id="username"></h3>
+    </div>
+    <button id="logout-btn">Logout</button>
+  </div>
+
+  <!-- Chat Room -->
   <div class="container" id="chat-container-main" style="display: none;">
-    <!-- Sidebar: Chat Rooms -->
-    <div class="sidebar">
-      <h3>Chat Rooms</h3>
-      <ul id="room-list"></ul>
-      <input type="text" id="new-room-name" placeholder="New room name">
-      <button id="create-room-btn">Create Room</button>
-    </div>
-    
-    <!-- Chat Area -->
-    <div class="chat-area">
-      <h3 id="current-room-name">Select a room to chat</h3>
-      <div id="chat-container"></div>
-      <input type="text" id="message-input" placeholder="Type a message...">
-      <button id="send-btn">Send</button>
-    </div>
+    <h3>Chat Room</h3>
+    <div id="chat-container"></div>
+    <input type="text" id="message-input" placeholder="Type a message...">
+    <button id="send-btn">Send</button>
   </div>
 
   <script>
-    // ✅ Replace with your Firebase configuration
+    // Firebase Config (Replace with your own Firebase credentials)
     const firebaseConfig = {
       apiKey: "AIzaSyBU_Q2F0zIMTrIyh5nXERtU3fEtlSX4SH0",
     authDomain: "mystical-slate-448113-c6.firebaseapp.com",
@@ -224,159 +115,116 @@ button:hover {
     measurementId: "G-HQSH8R6RF9"
     };
 
+    // Initialize Firebase
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
     const db = firebase.firestore();
 
     // DOM Elements
-    const emailInput = document.getElementById("email");
-    const passwordInput = document.getElementById("password");
-    const registerBtn = document.getElementById("register-btn");
-    const loginBtn = document.getElementById("login-btn");
-    const logoutBtn = document.getElementById("logout-btn");
+    const authContainer = document.getElementById("auth-container");
+    const profileContainer = document.getElementById("profile-container");
     const chatContainerMain = document.getElementById("chat-container-main");
-    const roomList = document.getElementById("room-list");
-    const createRoomBtn = document.getElementById("create-room-btn");
-    const newRoomNameInput = document.getElementById("new-room-name");
-    const currentRoomName = document.getElementById("current-room-name");
     const chatContainer = document.getElementById("chat-container");
     const messageInput = document.getElementById("message-input");
     const sendBtn = document.getElementById("send-btn");
 
-    let currentUser = null;
-    let currentRoomId = null;
+    const emailInput = document.getElementById("email");
+    const passwordInput = document.getElementById("password");
+    const registerBtn = document.getElementById("register-btn");
+    const loginBtn = document.getElementById("login-btn");
+    const googleLoginBtn = document.getElementById("google-login-btn");
+    const logoutBtn = document.getElementById("logout-btn");
+    const avatarElem = document.getElementById("avatar");
+    const usernameElem = document.getElementById("username");
 
-    // ✅ Register New User with Gmail & Password
+    let currentUser = null;
+
+    // Register User
     registerBtn.addEventListener("click", async () => {
-      const email = emailInput.value.trim();
+      const email = emailInput.value;
       const password = passwordInput.value;
-      
       try {
         const userCredential = await auth.createUserWithEmailAndPassword(email, password);
-        await userCredential.user.sendEmailVerification();
-        alert("Verification email sent. Please check your inbox.");
+        alert("Registration successful! Please log in.");
       } catch (error) {
         alert(error.message);
       }
     });
 
-    // ✅ Login User with Gmail & Password
+    // Login User
     loginBtn.addEventListener("click", async () => {
-      const email = emailInput.value.trim();
+      const email = emailInput.value;
       const password = passwordInput.value;
-      
       try {
-        const userCredential = await auth.signInWithEmailAndPassword(email, password);
-        if (!userCredential.user.emailVerified) {
-          alert("Please verify your email first.");
-          return;
-        }
-        currentUser = userCredential.user;
-        showUI();
-        loadRooms();
+        await auth.signInWithEmailAndPassword(email, password);
       } catch (error) {
         alert(error.message);
       }
     });
 
-    // ✅ Logout
+    // Google Login
+    googleLoginBtn.addEventListener("click", async () => {
+      const provider = new firebase.auth.GoogleAuthProvider();
+      try {
+        await auth.signInWithPopup(provider);
+      } catch (error) {
+        alert(error.message);
+      }
+    });
+
+    // Logout
     logoutBtn.addEventListener("click", async () => {
       await auth.signOut();
-      currentUser = null;
-      chatContainerMain.style.display = "none";
-      emailInput.value = "";
-      passwordInput.value = "";
     });
 
-    // ✅ Show UI after Login
-    function showUI() {
-      chatContainerMain.style.display = "flex";
-      logoutBtn.style.display = "block";
-    }
-
-    // ✅ Load Chat Rooms
-    function loadRooms() {
-      db.collection("chatRooms").onSnapshot(snapshot => {
-        roomList.innerHTML = "";
-        snapshot.forEach(doc => {
-          const room = doc.data();
-          const li = document.createElement("li");
-          li.textContent = room.name;
-          li.addEventListener("click", () => joinRoom(doc.id, room.name));
-          roomList.appendChild(li);
-        });
-      });
-    }
-
-    // ✅ Create New Room
-    createRoomBtn.addEventListener("click", async () => {
-      const roomName = newRoomNameInput.value.trim();
-      if (roomName) {
-        await db.collection("chatRooms").add({
-          name: roomName,
-          createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-        newRoomNameInput.value = "";
+    // Auth State Change
+    auth.onAuthStateChanged(async (user) => {
+      if (user) {
+        currentUser = user;
+        authContainer.style.display = "none";
+        profileContainer.style.display = "block";
+        chatContainerMain.style.display = "block";
+        usernameElem.textContent = user.displayName || user.email;
+        avatarElem.src = user.photoURL || "https://via.placeholder.com/50";
+        loadMessages();
+      } else {
+        currentUser = null;
+        authContainer.style.display = "block";
+        profileContainer.style.display = "none";
+        chatContainerMain.style.display = "none";
       }
     });
 
-    // ✅ Join a Room
-    function joinRoom(roomId, roomName) {
-      currentRoomId = roomId;
-      currentRoomName.textContent = roomName;
-      loadMessages();
+    // Load Messages
+    function loadMessages() {
+      db.collection("messages").orderBy("timestamp").onSnapshot((snapshot) => {
+        chatContainer.innerHTML = "";
+        snapshot.forEach(doc => {
+          const msg = doc.data();
+          const div = document.createElement("div");
+          div.classList.add("message");
+          if (msg.senderId === currentUser.uid) {
+            div.classList.add("user-message");
+          }
+          div.innerHTML = `<strong>${msg.senderName}:</strong> ${msg.text}`;
+          chatContainer.appendChild(div);
+        });
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+      });
     }
 
-    // Load messages for the current room and display them correctly
-function loadMessages() {
-  if (!currentRoomId) return;
-
-  db.collection("messages")
-    .where("roomId", "==", currentRoomId)
-    .orderBy("timestamp")
-    .onSnapshot(snapshot => {
-      chatContainer.innerHTML = ""; // Clear previous messages
-
-      snapshot.forEach(async (doc) => {
-        const msg = doc.data();
-        const div = document.createElement("div");
-        div.classList.add("message");
-
-        // Fetch the sender's username from Firestore
-        const userDoc = await db.collection("users").doc(msg.senderId).get();
-        const senderName = userDoc.exists ? userDoc.data().displayName : "Unknown";
-
-        // Add message content
-        div.innerHTML = `<strong>${senderName}:</strong> ${msg.text}`;
-        
-        // Highlight user's own messages
-        if (msg.senderId === currentUser.uid) {
-          div.classList.add("user-message");
-        } else {
-          div.classList.add("other-message");
-        }
-
-        chatContainer.appendChild(div);
-      });
-
-      // Auto-scroll to the latest message
-      chatContainer.scrollTop = chatContainer.scrollHeight;
-    });
-}
+    // Send Message
     sendBtn.addEventListener("click", async () => {
-  const message = messageInput.value.trim();
-  if (message === "" || !currentRoomId) return;
-
-  await db.collection("messages").add({
-    text: message,
-    senderId: currentUser.uid,  // Store sender's ID
-    roomId: currentRoomId,
-    timestamp: firebase.firestore.FieldValue.serverTimestamp()
-  });
-
-  messageInput.value = ""; // Clear input after sending
-});
-
+      const message = messageInput.value.trim();
+      if (message === "") return;
+      await db.collection("messages").add({
+        text: message,
+        senderId: currentUser.uid,
+        senderName: currentUser.displayName || currentUser.email,
+        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      messageInput.value = "";
+    });
   </script>
 </body>
 </html>
