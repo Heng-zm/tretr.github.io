@@ -57,6 +57,7 @@
         <input type="password" id="password" placeholder="Password" class="w-full p-2 border rounded mb-2" />
         <button id="login-btn" class="w-full bg-green-500 text-white p-2 rounded hover:bg-green-600">Login</button>
         <button id="register-btn" class="w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600 mt-2">Register</button>
+        <button id="forgot-password-btn" class="w-full bg-yellow-500 text-white p-2 rounded hover:bg-yellow-600 mt-2">Forgot Password?</button>
         <button id="google-login-btn" class="w-full bg-red-500 text-white p-2 rounded hover:bg-red-600 mt-2">Login with Google</button>
       </div>
     </div>
@@ -81,6 +82,8 @@
     const db = firebase.firestore();
     
     // DOM Elements
+    // Get Forgot Password Button
+    const forgotPasswordBtn = document.getElementById("forgot-password-btn");
     const authModal = document.getElementById("auth-modal");
     const emailInput = document.getElementById("email");
     const passwordInput = document.getElementById("password");
@@ -121,6 +124,21 @@
         alert(error.message);
       }
     });
+    // Forgot Password Function
+forgotPasswordBtn.addEventListener("click", async () => {
+  const email = emailInput.value.trim();
+  if (!email) {
+    alert("Please enter your email to reset password.");
+    return;
+  }
+  
+  try {
+    await auth.sendPasswordResetEmail(email);
+    alert("Password reset email sent! Check your inbox.");
+  } catch (error) {
+    alert(error.message);
+  }
+});
     
     googleLoginBtn.addEventListener("click", async () => {
       const provider = new firebase.auth.GoogleAuthProvider();
