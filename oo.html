@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Chat App with Advanced Messaging Features</title>
+  <title>Full Screen Chat App</title>
   
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -12,36 +12,55 @@
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+  
+  <!-- Custom styles for full-screen layout -->
+  <style>
+    /* Ensure the app container takes full height */
+    #app { min-height: 100vh; }
+  </style>
 </head>
-<body class="bg-gray-100 flex justify-center items-center h-screen">
-  <div class="w-full max-w-md bg-white shadow-lg rounded-lg p-6">
-    <h1 class="text-2xl font-bold text-center mb-4">Chat App</h1>
+<body class="bg-gradient-to-r from-blue-500 to-purple-500">
+  <!-- Main App Container -->
+  <div id="app" class="flex flex-col">
     
-    <!-- Authentication -->
-    <div id="auth-container">
-      <input type="email" id="email" placeholder="Email" class="w-full p-2 border rounded mb-2" />
-      <input type="password" id="password" placeholder="Password" class="w-full p-2 border rounded mb-2" />
-      <button id="register-btn" class="w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600">Register</button>
-      <button id="login-btn" class="w-full bg-green-500 text-white p-2 rounded hover:bg-green-600 mt-2">Login</button>
-      <button id="google-login-btn" class="w-full bg-red-500 text-white p-2 rounded hover:bg-red-600 mt-2">Login with Google</button>
-    </div>
+    <!-- Header -->
+    <header class="bg-white shadow p-4 flex items-center justify-between">
+      <h1 class="text-2xl font-bold text-gray-800">Chat App</h1>
+      <div id="user-info" class="hidden items-center space-x-4">
+        <span id="username" class="font-semibold text-gray-700"></span>
+        <button id="logout-btn" class="bg-red-500 text-white px-3 py-1 rounded">Logout</button>
+      </div>
+    </header>
     
-    <!-- Profile (Avatar removed) -->
-    <div id="profile-container" class="hidden text-center">
-      <h3 id="username" class="text-lg font-semibold"></h3>
-      <button id="logout-btn" class="bg-red-500 text-white px-4 py-2 rounded mt-2 hover:bg-red-600">Logout</button>
-    </div>
+    <!-- Main Content -->
+    <main class="flex-grow p-4 overflow-hidden">
+      <!-- Chat Container -->
+      <div id="chat-container" class="bg-white rounded-lg shadow p-4 h-full overflow-y-auto"></div>
+    </main>
     
-    <!-- Chat Room -->
-    <div id="chat-container-main" class="hidden mt-4">
-      <h3 class="text-lg font-bold">Chat Room</h3>
-      <div id="chat-container" class="h-60 overflow-y-auto border p-2 rounded bg-gray-100 mb-2"></div>
+    <!-- Footer / Input Area -->
+    <footer class="bg-white p-4">
       <!-- Typing Indicator -->
-      <div id="typing-indicator" class="text-sm text-gray-500 mt-2"></div>
-      <input type="text" id="message-input" placeholder="Type a message..." class="w-full p-2 border rounded" />
-      <button id="send-btn" class="w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600 mt-2">Send</button>
-      <button id="location-btn" class="w-full bg-green-500 text-white p-2 rounded hover:bg-green-600 mt-2">📍 Share Location</button>
+      <div id="typing-indicator" class="text-sm text-gray-500 mb-2"></div>
+      <div class="flex space-x-2">
+        <input type="text" id="message-input" placeholder="Type a message..." class="flex-grow p-2 border rounded" />
+        <button id="send-btn" class="bg-blue-500 text-white px-4 py-2 rounded">Send</button>
+      </div>
+      <button id="location-btn" class="w-full bg-green-500 text-white px-4 py-2 rounded mt-2">Share Location 📍</button>
+    </footer>
+    
+    <!-- Authentication Modal (Shown when not logged in) -->
+    <div id="auth-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+      <div class="bg-white rounded-lg p-6 w-full max-w-sm">
+        <h2 class="text-xl font-bold mb-4 text-center">Login / Register</h2>
+        <input type="email" id="email" placeholder="Email" class="w-full p-2 border rounded mb-2" />
+        <input type="password" id="password" placeholder="Password" class="w-full p-2 border rounded mb-2" />
+        <button id="login-btn" class="w-full bg-green-500 text-white p-2 rounded hover:bg-green-600">Login</button>
+        <button id="register-btn" class="w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600 mt-2">Register</button>
+        <button id="google-login-btn" class="w-full bg-red-500 text-white p-2 rounded hover:bg-red-600 mt-2">Login with Google</button>
+      </div>
     </div>
+    
   </div>
   
   <script>
@@ -62,39 +81,37 @@
     const db = firebase.firestore();
     
     // DOM Elements
-    const authContainer = document.getElementById("auth-container");
-    const profileContainer = document.getElementById("profile-container");
-    const chatContainerMain = document.getElementById("chat-container-main");
-    const chatContainer = document.getElementById("chat-container");
-    const typingIndicator = document.getElementById("typing-indicator");
-    const messageInput = document.getElementById("message-input");
-    const sendBtn = document.getElementById("send-btn");
-    const locationBtn = document.getElementById("location-btn");
-    
+    const authModal = document.getElementById("auth-modal");
     const emailInput = document.getElementById("email");
     const passwordInput = document.getElementById("password");
-    const registerBtn = document.getElementById("register-btn");
     const loginBtn = document.getElementById("login-btn");
+    const registerBtn = document.getElementById("register-btn");
     const googleLoginBtn = document.getElementById("google-login-btn");
     const logoutBtn = document.getElementById("logout-btn");
     const usernameElem = document.getElementById("username");
+    const userInfo = document.getElementById("user-info");
+    
+    const chatContainer = document.getElementById("chat-container");
+    const messageInput = document.getElementById("message-input");
+    const sendBtn = document.getElementById("send-btn");
+    const locationBtn = document.getElementById("location-btn");
+    const typingIndicator = document.getElementById("typing-indicator");
     
     let currentUser = null;
     let typingTimeout;
     
-    // Register User
+    // Authentication Functions
     registerBtn.addEventListener("click", async () => {
       const email = emailInput.value;
       const password = passwordInput.value;
       try {
         await auth.createUserWithEmailAndPassword(email, password);
-        alert("Registration successful! Please log in.");
+        alert("Registration successful!");
       } catch (error) {
         alert(error.message);
       }
     });
     
-    // Login User
     loginBtn.addEventListener("click", async () => {
       const email = emailInput.value;
       const password = passwordInput.value;
@@ -105,7 +122,6 @@
       }
     });
     
-    // Google Login
     googleLoginBtn.addEventListener("click", async () => {
       const provider = new firebase.auth.GoogleAuthProvider();
       try {
@@ -115,22 +131,35 @@
       }
     });
     
-    // Logout
     logoutBtn.addEventListener("click", async () => {
       await auth.signOut();
     });
     
-    // Typing indicator update: When user types, set their "typing" status in Firestore.
+    // Auth State Listener
+    auth.onAuthStateChanged(user => {
+      if (user) {
+        currentUser = user;
+        authModal.style.display = "none";
+        userInfo.style.display = "flex";
+        usernameElem.textContent = user.displayName || user.email;
+        loadMessages();
+      } else {
+        currentUser = null;
+        authModal.style.display = "flex";
+        userInfo.style.display = "none";
+      }
+    });
+    
+    // Advanced Messaging Features
+    
+    // Typing Indicator
     messageInput.addEventListener("input", () => {
       if (!currentUser) return;
-      // Update current user's typing status
       db.collection("typing").doc(currentUser.uid).set({
         username: currentUser.displayName || currentUser.email,
         isTyping: messageInput.value.length > 0,
         timestamp: firebase.firestore.FieldValue.serverTimestamp()
       });
-      
-      // Clear any previous timeout and reset typing status after 2 seconds of inactivity
       clearTimeout(typingTimeout);
       typingTimeout = setTimeout(() => {
         db.collection("typing").doc(currentUser.uid).set({
@@ -141,23 +170,18 @@
       }, 2000);
     });
     
-    // Listen for typing status from other users
     db.collection("typing").onSnapshot(snapshot => {
-      let typingUsers = [];
+      let usersTyping = [];
       snapshot.forEach(doc => {
-        const data = doc.data();
-        if (doc.id !== (currentUser && currentUser.uid) && data.isTyping) {
-          typingUsers.push(data.username);
+        if (doc.id !== (currentUser && currentUser.uid)) {
+          const data = doc.data();
+          if (data.isTyping) usersTyping.push(data.username);
         }
       });
-      if (typingUsers.length > 0) {
-        typingIndicator.textContent = typingUsers.join(", ") + " is typing...";
-      } else {
-        typingIndicator.textContent = "";
-      }
+      typingIndicator.textContent = usersTyping.length ? usersTyping.join(", ") + " typing..." : "";
     });
     
-    // Load Messages, handle read receipts and reactions
+    // Load Messages with Read Receipts and Reactions
     function loadMessages() {
       db.collection("messages").orderBy("timestamp")
         .onSnapshot(snapshot => {
@@ -167,36 +191,34 @@
             const messageId = doc.id;
             const div = document.createElement("div");
             div.classList.add("p-2", "rounded", "mb-2", "text-sm", "bg-white", "shadow", "relative");
-            
-            // Apply style if sent by current user
             if (msg.senderId === currentUser.uid) {
               div.classList.add("bg-blue-100", "text-right");
             }
             
-            // Build message content
-            let messageContent = `<strong>${msg.senderName}:</strong> `;
+            let content = `<strong>${msg.senderName}:</strong> `;
             if (msg.location) {
-              messageContent += `<br><a href="${msg.location}" target="_blank" class="text-blue-500 underline">📍 View Location</a>`;
+              content += `<br><a href="${msg.location}" target="_blank" class="text-blue-500 underline">📍 View Location</a>`;
             } else {
-              messageContent += msg.text;
+              content += msg.text;
             }
-            // Append read receipt for messages sent by current user
+            
+            // Add read receipt for sender's messages
             if (msg.senderId === currentUser.uid && msg.read) {
-              messageContent += ` <span class="text-xs text-green-500">✓ Seen</span>`;
+              content += `<span class="text-xs text-green-500 ml-2">✓ Seen</span>`;
             }
             
-            // Append reactions if any
+            // Display reactions if available
             if (msg.reactions) {
-              let reactionsText = "";
+              let reactions = "";
               for (let emoji in msg.reactions) {
-                reactionsText += `${emoji} ${msg.reactions[emoji]} `;
+                reactions += `${emoji} ${msg.reactions[emoji]} `;
               }
-              messageContent += `<div class="text-xs mt-1">${reactionsText}</div>`;
+              content += `<div class="text-xs mt-1">${reactions}</div>`;
             }
             
-            div.innerHTML = messageContent;
+            div.innerHTML = content;
             
-            // Add reaction button (e.g., thumbs up)
+            // Add reaction button (thumbs up)
             const reactionBtn = document.createElement("button");
             reactionBtn.textContent = "👍";
             reactionBtn.classList.add("absolute", "bottom-0", "right-0", "text-sm", "hover:opacity-75");
@@ -205,72 +227,50 @@
             
             chatContainer.appendChild(div);
             
-            // If message is not sent by current user and not yet marked as read, update it
+            // Mark incoming messages as read
             if (msg.senderId !== currentUser.uid && !msg.read) {
-              db.collection("messages").doc(messageId).update({
-                read: true
-              });
+              db.collection("messages").doc(messageId).update({ read: true });
             }
           });
           chatContainer.scrollTop = chatContainer.scrollHeight;
         });
     }
     
-    // Function to add a reaction to a message
+    // Add Reaction Function
     function addReaction(messageId, emoji) {
       const messageRef = db.collection("messages").doc(messageId);
       messageRef.update({
-        // Using Firestore FieldValue.increment to update count
         [`reactions.${emoji}`]: firebase.firestore.FieldValue.increment(1)
-      }).catch(error => {
-        console.error("Error adding reaction: ", error);
-      });
+      }).catch(error => console.error("Error adding reaction:", error));
     }
     
     // Send Message
     sendBtn.addEventListener("click", async () => {
-      const message = messageInput.value.trim();
-      if (message === "") return;
+      const text = messageInput.value.trim();
+      if (text === "") return;
       await db.collection("messages").add({
-        text: message,
+        text: text,
         senderId: currentUser.uid,
         senderName: currentUser.displayName || currentUser.email,
         timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-        read: false  // Initially, message is not read by recipients
+        read: false
       });
       messageInput.value = "";
     });
     
     // Share Location
     locationBtn.addEventListener("click", async () => {
-      if (!navigator.geolocation) return alert("Geolocation is not supported!");
-      navigator.geolocation.getCurrentPosition(async (position) => {
-        const locationURL = `https://www.google.com/maps?q=${position.coords.latitude},${position.coords.longitude}`;
+      if (!navigator.geolocation) return alert("Geolocation not supported!");
+      navigator.geolocation.getCurrentPosition(async position => {
+        const loc = `https://www.google.com/maps?q=${position.coords.latitude},${position.coords.longitude}`;
         await db.collection("messages").add({
-          location: locationURL,
+          location: loc,
           senderId: currentUser.uid,
           senderName: currentUser.displayName || currentUser.email,
           timestamp: firebase.firestore.FieldValue.serverTimestamp(),
           read: false
         });
       });
-    });
-    
-    // Auth State Change
-    auth.onAuthStateChanged(async (user) => {
-      if (user) {
-        currentUser = user;
-        authContainer.classList.add("hidden");
-        profileContainer.classList.remove("hidden");
-        chatContainerMain.classList.remove("hidden");
-        usernameElem.textContent = user.displayName || user.email;
-        loadMessages();
-      } else {
-        currentUser = null;
-        authContainer.classList.remove("hidden");
-        profileContainer.classList.add("hidden");
-        chatContainerMain.classList.add("hidden");
-      }
     });
   </script>
 </body>
