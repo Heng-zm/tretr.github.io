@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Chat App with Firebase & Tailwind</title>
+  <title>Chat App with Voice Messages</title>
 
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -12,39 +12,29 @@
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
 </head>
 <body class="bg-gray-100 flex justify-center items-center h-screen">
-  
+
   <div class="w-full max-w-md bg-white shadow-lg rounded-lg p-6">
     <h1 class="text-2xl font-bold text-center mb-4">Chat App</h1>
 
-    <!-- Authentication -->
-    <div id="auth-container">
-      <input type="email" id="email" placeholder="Email" class="w-full p-2 border rounded mb-2">
-      <input type="password" id="password" placeholder="Password" class="w-full p-2 border rounded mb-2">
-      <button id="register-btn" class="w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600">Register</button>
-      <button id="login-btn" class="w-full bg-green-500 text-white p-2 rounded hover:bg-green-600 mt-2">Login</button>
-      <button id="google-login-btn" class="w-full bg-red-500 text-white p-2 rounded hover:bg-red-600 mt-2">Login with Google</button>
-    </div>
-
-    <!-- Profile -->
-    <div id="profile-container" class="hidden text-center">
-      <img id="avatar" src="" class="w-16 h-16 rounded-full mx-auto mb-2">
-      <h3 id="username" class="text-lg font-semibold"></h3>
-      <button id="logout-btn" class="bg-red-500 text-white px-4 py-2 rounded mt-2 hover:bg-red-600">Logout</button>
-    </div>
-
-    <!-- Chat Room -->
-    <div id="chat-container-main" class="hidden mt-4">
-      <h3 class="text-lg font-bold">Chat Room</h3>
+    <!-- Chat Area -->
+    <div id="chat-container-main">
       <div id="chat-container" class="h-60 overflow-y-auto border p-2 rounded bg-gray-100 mb-2"></div>
-      <input type="text" id="message-input" placeholder="Type a message..." class="w-full p-2 border rounded">
-      <button id="send-btn" class="w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600 mt-2">Send</button>
+      <div class="flex space-x-2">
+        <input type="text" id="message-input" placeholder="Type a message..." class="w-full p-2 border rounded">
+        <button id="send-btn" class="bg-blue-500 text-white px-4 py-2 rounded">Send</button>
+      </div>
+      <div class="flex space-x-2 mt-2">
+        <button id="record-btn" class="bg-red-500 text-white px-4 py-2 rounded">🎙 Start Recording</button>
+        <button id="stop-btn" class="bg-gray-500 text-white px-4 py-2 rounded hidden">⏹ Stop</button>
+      </div>
     </div>
   </div>
 
   <script>
-    // Firebase Config (Replace with your own Firebase credentials)
+    // Firebase Config (Replace with your credentials)
     const firebaseConfig = {
       apiKey: "AIzaSyBU_Q2F0zIMTrIyh5nXERtU3fEtlSX4SH0",
     authDomain: "mystical-slate-448113-c6.firebaseapp.com",
@@ -57,83 +47,18 @@
 
     // Initialize Firebase
     firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
     const db = firebase.firestore();
+    const storage = firebase.storage();
 
     // DOM Elements
-    const authContainer = document.getElementById("auth-container");
-    const profileContainer = document.getElementById("profile-container");
-    const chatContainerMain = document.getElementById("chat-container-main");
     const chatContainer = document.getElementById("chat-container");
     const messageInput = document.getElementById("message-input");
     const sendBtn = document.getElementById("send-btn");
+    const recordBtn = document.getElementById("record-btn");
+    const stopBtn = document.getElementById("stop-btn");
 
-    const emailInput = document.getElementById("email");
-    const passwordInput = document.getElementById("password");
-    const registerBtn = document.getElementById("register-btn");
-    const loginBtn = document.getElementById("login-btn");
-    const googleLoginBtn = document.getElementById("google-login-btn");
-    const logoutBtn = document.getElementById("logout-btn");
-    const avatarElem = document.getElementById("avatar");
-    const usernameElem = document.getElementById("username");
-
-    let currentUser = null;
-
-    // Register User
-    registerBtn.addEventListener("click", async () => {
-      const email = emailInput.value;
-      const password = passwordInput.value;
-      try {
-        await auth.createUserWithEmailAndPassword(email, password);
-        alert("Registration successful! Please log in.");
-      } catch (error) {
-        alert(error.message);
-      }
-    });
-
-    // Login User
-    loginBtn.addEventListener("click", async () => {
-      const email = emailInput.value;
-      const password = passwordInput.value;
-      try {
-        await auth.signInWithEmailAndPassword(email, password);
-      } catch (error) {
-        alert(error.message);
-      }
-    });
-
-    // Google Login
-    googleLoginBtn.addEventListener("click", async () => {
-      const provider = new firebase.auth.GoogleAuthProvider();
-      try {
-        await auth.signInWithPopup(provider);
-      } catch (error) {
-        alert(error.message);
-      }
-    });
-
-    // Logout
-    logoutBtn.addEventListener("click", async () => {
-      await auth.signOut();
-    });
-
-    // Auth State Change
-    auth.onAuthStateChanged(async (user) => {
-      if (user) {
-        currentUser = user;
-        authContainer.classList.add("hidden");
-        profileContainer.classList.remove("hidden");
-        chatContainerMain.classList.remove("hidden");
-        usernameElem.textContent = user.displayName || user.email;
-        avatarElem.src = user.photoURL || "https://via.placeholder.com/50";
-        loadMessages();
-      } else {
-        currentUser = null;
-        authContainer.classList.remove("hidden");
-        profileContainer.classList.add("hidden");
-        chatContainerMain.classList.add("hidden");
-      }
-    });
+    let mediaRecorder;
+    let audioChunks = [];
 
     // Load Messages
     function loadMessages() {
@@ -142,30 +67,72 @@
         snapshot.forEach(doc => {
           const msg = doc.data();
           const div = document.createElement("div");
-          div.classList.add("p-2", "rounded", "mb-2", "text-sm", "bg-white", "shadow");
+          div.classList.add("p-2", "rounded", "mb-2", "bg-white", "shadow");
 
-          if (msg.senderId === currentUser.uid) {
-            div.classList.add("bg-blue-100", "text-right");
+          if (msg.text) {
+            div.innerHTML = `<strong>${msg.senderName}:</strong> ${msg.text}`;
+          } else if (msg.audioUrl) {
+            div.innerHTML = `<strong>${msg.senderName}:</strong> <audio controls src="${msg.audioUrl}"></audio>`;
           }
 
-          div.innerHTML = `<strong>${msg.senderName}:</strong> ${msg.text}`;
           chatContainer.appendChild(div);
         });
         chatContainer.scrollTop = chatContainer.scrollHeight;
       });
     }
+    loadMessages();
 
-    // Send Message
+    // Send Text Message
     sendBtn.addEventListener("click", async () => {
       const message = messageInput.value.trim();
       if (message === "") return;
       await db.collection("messages").add({
         text: message,
-        senderId: currentUser.uid,
-        senderName: currentUser.displayName || currentUser.email,
+        senderName: "User",
         timestamp: firebase.firestore.FieldValue.serverTimestamp()
       });
       messageInput.value = "";
+    });
+
+    // Start Recording
+    recordBtn.addEventListener("click", async () => {
+      audioChunks = [];
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorder = new MediaRecorder(stream);
+      mediaRecorder.start();
+
+      mediaRecorder.ondataavailable = (event) => {
+        audioChunks.push(event.data);
+      };
+
+      mediaRecorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunks, { type: "audio/webm" });
+        const audioFile = new File([audioBlob], `voice_${Date.now()}.webm`, { type: "audio/webm" });
+
+        // Upload to Firebase Storage
+        const storageRef = storage.ref(`voice_messages/${audioFile.name}`);
+        await storageRef.put(audioFile);
+        const audioUrl = await storageRef.getDownloadURL();
+
+        // Save to Firestore
+        await db.collection("messages").add({
+          senderName: "User",
+          audioUrl,
+          timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        alert("Voice message sent!");
+      };
+
+      recordBtn.classList.add("hidden");
+      stopBtn.classList.remove("hidden");
+    });
+
+    // Stop Recording
+    stopBtn.addEventListener("click", () => {
+      mediaRecorder.stop();
+      recordBtn.classList.remove("hidden");
+      stopBtn.classList.add("hidden");
     });
   </script>
 </body>
