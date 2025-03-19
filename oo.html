@@ -19,22 +19,24 @@
   <div class="w-full max-w-md bg-white shadow-lg rounded-lg p-6">
     <h1 class="text-2xl font-bold text-center mb-4">Chat App</h1>
 
-    <!-- Chat Area -->
-    <div id="chat-container-main">
-      <div id="chat-container" class="h-60 overflow-y-auto border p-2 rounded bg-gray-100 mb-2"></div>
-      <div class="flex space-x-2">
-        <input type="text" id="message-input" placeholder="Type a message..." class="w-full p-2 border rounded">
-        <button id="send-btn" class="bg-blue-500 text-white px-4 py-2 rounded">Send</button>
-      </div>
-      <div class="flex space-x-2 mt-2">
-        <button id="record-btn" class="bg-red-500 text-white px-4 py-2 rounded">🎙 Start Recording</button>
-        <button id="stop-btn" class="bg-gray-500 text-white px-4 py-2 rounded hidden">⏹ Stop</button>
-      </div>
+    <!-- Chat Messages -->
+    <div id="chat-container" class="h-60 overflow-y-auto border p-2 rounded bg-gray-100 mb-2"></div>
+
+    <!-- Text Input & Send Button -->
+    <div class="flex space-x-2">
+      <input type="text" id="message-input" placeholder="Type a message..." class="w-full p-2 border rounded">
+      <button id="send-btn" class="bg-blue-500 text-white px-4 py-2 rounded">Send</button>
+    </div>
+
+    <!-- Voice Message Buttons -->
+    <div class="flex space-x-2 mt-2">
+      <button id="record-btn" class="bg-red-500 text-white px-4 py-2 rounded">🎙 Record</button>
+      <button id="stop-btn" class="bg-gray-500 text-white px-4 py-2 rounded hidden">⏹ Stop</button>
     </div>
   </div>
 
   <script>
-    // Firebase Config (Replace with your credentials)
+    // 🔹 Replace with your Firebase config
     const firebaseConfig = {
       apiKey: "AIzaSyBU_Q2F0zIMTrIyh5nXERtU3fEtlSX4SH0",
     authDomain: "mystical-slate-448113-c6.firebaseapp.com",
@@ -60,7 +62,7 @@
     let mediaRecorder;
     let audioChunks = [];
 
-    // Load Messages
+    // ✅ Load Messages
     function loadMessages() {
       db.collection("messages").orderBy("timestamp").onSnapshot((snapshot) => {
         chatContainer.innerHTML = "";
@@ -82,7 +84,7 @@
     }
     loadMessages();
 
-    // Send Text Message
+    // ✅ Send Text Message
     sendBtn.addEventListener("click", async () => {
       const message = messageInput.value.trim();
       if (message === "") return;
@@ -94,7 +96,7 @@
       messageInput.value = "";
     });
 
-    // Start Recording
+    // ✅ Start Recording
     recordBtn.addEventListener("click", async () => {
       audioChunks = [];
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -128,7 +130,7 @@
       stopBtn.classList.remove("hidden");
     });
 
-    // Stop Recording
+    // ✅ Stop Recording
     stopBtn.addEventListener("click", () => {
       mediaRecorder.stop();
       recordBtn.classList.remove("hidden");
