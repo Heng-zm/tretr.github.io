@@ -3,104 +3,44 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Chat App with Firebase</title>
+  <title>Chat App with Firebase & Tailwind</title>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
 
   <!-- Firebase v8 -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      text-align: center;
-      background-color: #f4f4f4;
-      margin: 0;
-      padding: 0;
-    }
-    h1 { margin-top: 20px; }
-    .container {
-      width: 100%;
-      max-width: 400px;
-      margin: auto;
-      background: #fff;
-      padding: 20px;
-      border-radius: 8px;
-      box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
-    }
-    #chat-container {
-      height: 300px;
-      overflow-y: scroll;
-      border: 1px solid #ccc;
-      padding: 10px;
-      margin-bottom: 10px;
-      background: #fafafa;
-    }
-    .message {
-      padding: 8px;
-      margin: 5px;
-      border-radius: 5px;
-      background: #e1f5fe;
-      text-align: left;
-    }
-    .user-message {
-      background: #b2dfdb;
-      text-align: right;
-    }
-    input, button {
-      width: calc(100% - 22px);
-      padding: 10px;
-      margin-top: 10px;
-      border: 1px solid #ccc;
-      border-radius: 5px;
-    }
-    button {
-      background-color: #007BFF;
-      color: white;
-      cursor: pointer;
-    }
-    button:hover {
-      background-color: #0056b3;
-    }
-    #profile {
-      text-align: center;
-      margin-bottom: 20px;
-    }
-    #avatar {
-      width: 50px;
-      height: 50px;
-      border-radius: 50%;
-      margin-bottom: 5px;
-    }
-  </style>
 </head>
-<body>
-  <h1>Chat App</h1>
+<body class="bg-gray-100 flex justify-center items-center h-screen">
+  
+  <div class="w-full max-w-md bg-white shadow-lg rounded-lg p-6">
+    <h1 class="text-2xl font-bold text-center mb-4">Chat App</h1>
 
-  <!-- Login/Register -->
-  <div class="container" id="auth-container">
-    <input type="email" id="email" placeholder="Email">
-    <input type="password" id="password" placeholder="Password">
-    <button id="register-btn">Register</button>
-    <button id="login-btn">Login</button>
-    <button id="google-login-btn">Login with Google</button>
-  </div>
-
-  <!-- Profile -->
-  <div class="container" id="profile-container" style="display: none;">
-    <div id="profile">
-      <img id="avatar" src="" alt="Avatar">
-      <h3 id="username"></h3>
+    <!-- Authentication -->
+    <div id="auth-container">
+      <input type="email" id="email" placeholder="Email" class="w-full p-2 border rounded mb-2">
+      <input type="password" id="password" placeholder="Password" class="w-full p-2 border rounded mb-2">
+      <button id="register-btn" class="w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600">Register</button>
+      <button id="login-btn" class="w-full bg-green-500 text-white p-2 rounded hover:bg-green-600 mt-2">Login</button>
+      <button id="google-login-btn" class="w-full bg-red-500 text-white p-2 rounded hover:bg-red-600 mt-2">Login with Google</button>
     </div>
-    <button id="logout-btn">Logout</button>
-  </div>
 
-  <!-- Chat Room -->
-  <div class="container" id="chat-container-main" style="display: none;">
-    <h3>Chat Room</h3>
-    <div id="chat-container"></div>
-    <input type="text" id="message-input" placeholder="Type a message...">
-    <button id="send-btn">Send</button>
+    <!-- Profile -->
+    <div id="profile-container" class="hidden text-center">
+      <img id="avatar" src="" class="w-16 h-16 rounded-full mx-auto mb-2">
+      <h3 id="username" class="text-lg font-semibold"></h3>
+      <button id="logout-btn" class="bg-red-500 text-white px-4 py-2 rounded mt-2 hover:bg-red-600">Logout</button>
+    </div>
+
+    <!-- Chat Room -->
+    <div id="chat-container-main" class="hidden mt-4">
+      <h3 class="text-lg font-bold">Chat Room</h3>
+      <div id="chat-container" class="h-60 overflow-y-auto border p-2 rounded bg-gray-100 mb-2"></div>
+      <input type="text" id="message-input" placeholder="Type a message..." class="w-full p-2 border rounded">
+      <button id="send-btn" class="w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600 mt-2">Send</button>
+    </div>
   </div>
 
   <script>
@@ -144,7 +84,7 @@
       const email = emailInput.value;
       const password = passwordInput.value;
       try {
-        const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+        await auth.createUserWithEmailAndPassword(email, password);
         alert("Registration successful! Please log in.");
       } catch (error) {
         alert(error.message);
@@ -181,17 +121,17 @@
     auth.onAuthStateChanged(async (user) => {
       if (user) {
         currentUser = user;
-        authContainer.style.display = "none";
-        profileContainer.style.display = "block";
-        chatContainerMain.style.display = "block";
+        authContainer.classList.add("hidden");
+        profileContainer.classList.remove("hidden");
+        chatContainerMain.classList.remove("hidden");
         usernameElem.textContent = user.displayName || user.email;
         avatarElem.src = user.photoURL || "https://via.placeholder.com/50";
         loadMessages();
       } else {
         currentUser = null;
-        authContainer.style.display = "block";
-        profileContainer.style.display = "none";
-        chatContainerMain.style.display = "none";
+        authContainer.classList.remove("hidden");
+        profileContainer.classList.add("hidden");
+        chatContainerMain.classList.add("hidden");
       }
     });
 
@@ -202,10 +142,12 @@
         snapshot.forEach(doc => {
           const msg = doc.data();
           const div = document.createElement("div");
-          div.classList.add("message");
+          div.classList.add("p-2", "rounded", "mb-2", "text-sm", "bg-white", "shadow");
+
           if (msg.senderId === currentUser.uid) {
-            div.classList.add("user-message");
+            div.classList.add("bg-blue-100", "text-right");
           }
+
           div.innerHTML = `<strong>${msg.senderName}:</strong> ${msg.text}`;
           chatContainer.appendChild(div);
         });
