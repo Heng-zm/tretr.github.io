@@ -1,0 +1,170 @@
+/* 🌙 Dark & Light Mode */
+:root {
+  --bg-color: #f4f4f4;
+  --text-color: #333;
+  --chat-bg: #fff;
+  --message-bg: #e3f2fd;
+  --my-message-bg: #dcf8c6;
+  --button-bg: #6200ea;
+  --button-hover: #3700b3;
+}
+
+.dark-mode {
+  --bg-color: #121212;
+  --text-color: #fff;
+  --chat-bg: #1e1e1e;
+  --message-bg: #333;
+  --my-message-bg: #4caf50;
+  --button-bg: #bb86fc;
+  --button-hover: #9f6df1;
+}
+
+/* 🎨 General Styles */
+body {
+  font-family: 'Poppins', sans-serif;
+  background: var(--bg-color);
+  color: var(--text-color);
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transition: 0.3s ease-in-out;
+}
+
+h1 {
+  text-align: center;
+  margin-bottom: 10px;
+}
+
+/* 📜 Chat Container */
+.container {
+  display: flex;
+  width: 80%;
+  max-width: 900px;
+  height: 500px;
+  background: var(--chat-bg);
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+/* 📌 Sidebar */
+.sidebar {
+  width: 250px;
+  background: #6200ea;
+  color: white;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.sidebar h3 {
+  margin-bottom: 10px;
+}
+
+.sidebar ul {
+  list-style: none;
+  padding: 0;
+}
+
+.sidebar li {
+  background: rgba(255, 255, 255, 0.1);
+  padding: 10px;
+  border-radius: 5px;
+  margin: 5px 0;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.sidebar li:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* 💬 Chat Area */
+.chat-area {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+}
+
+/* 🔄 Chat Messages */
+#chat-container {
+  flex-grow: 1;
+  overflow-y: auto;
+  padding: 10px;
+  border-radius: 10px;
+  background: var(--chat-bg);
+}
+
+/* 🗨️ Chat Bubbles */
+.message {
+  max-width: 70%;
+  padding: 10px;
+  border-radius: 10px;
+  margin-bottom: 10px;
+  position: relative;
+  display: inline-block;
+}
+
+.user-message {
+  background: var(--my-message-bg);
+  align-self: flex-end;
+  text-align: right;
+}
+
+.other-message {
+  background: var(--message-bg);
+}
+
+.message span {
+  display: block;
+  font-size: 12px;
+  opacity: 0.7;
+  margin-top: 3px;
+}
+
+/* 📝 Input & Buttons */
+.input-container {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+input {
+  flex-grow: 1;
+  padding: 12px;
+  border: none;
+  border-radius: 5px;
+  outline: none;
+}
+
+button {
+  background: var(--button-bg);
+  color: white;
+  border: none;
+  padding: 12px 15px;
+  cursor: pointer;
+  border-radius: 5px;
+  transition: 0.2s;
+}
+
+button:hover {
+  background: var(--button-hover);
+}
+
+/* 🌙 Dark Mode Toggle */
+.dark-mode-toggle {
+  margin-top: 10px;
+  padding: 10px;
+  background: var(--button-bg);
+  color: white;
+  border: none;
+  cursor: pointer;
+  border-radius: 5px;
+  transition: 0.2s;
+}
+
+.dark-mode-toggle:hover {
+  background: var(--button-hover);
+}
