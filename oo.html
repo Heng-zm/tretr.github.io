@@ -1,295 +1,67 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Full Screen Chat App</title>
-  
-  <!-- Tailwind CSS -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  
-  <!-- Firebase v8 SDKs -->
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-  
-  <!-- Custom styles for full-screen layout -->
-  <style>
-    /* Ensure the app container takes full height */
-    #app { min-height: 100vh; }
-  </style>
-</head>
-<body class="bg-gradient-to-r from-blue-500 to-purple-500">
-  <!-- Main App Container -->
-  <div id="app" class="flex flex-col">
-    
-    <!-- Header -->
-    <header class="bg-white shadow p-4 flex items-center justify-between">
-      <h1 class="text-2xl font-bold text-gray-800">Chat App</h1>
-      <div id="user-info" class="hidden items-center space-x-4">
-        <span id="username" class="font-semibold text-gray-700"></span>
-        <button id="logout-btn" class="bg-red-500 text-white px-3 py-1 rounded">Logout</button>
-      </div>
-    </header>
-    
-    <!-- Main Content -->
-    <main class="flex-grow p-4 overflow-hidden">
-      <!-- Chat Container -->
-      <div id="chat-container" class="bg-white rounded-lg shadow p-4 h-full overflow-y-auto"></div>
-    </main>
-    
-    <!-- Footer / Input Area -->
-    <footer class="bg-white p-4">
-      <!-- Typing Indicator -->
-      <div id="typing-indicator" class="text-sm text-gray-500 mb-2"></div>
-      <div class="flex space-x-2">
-        <input type="text" id="message-input" placeholder="Type a message..." class="flex-grow p-2 border rounded" />
-        <button id="send-btn" class="bg-blue-500 text-white px-4 py-2 rounded">Send</button>
-      </div>
-      <button id="location-btn" class="w-full bg-green-500 text-white px-4 py-2 rounded mt-2">Share Location 📍</button>
-    </footer>
-    
-    <!-- Authentication Modal (Shown when not logged in) -->
-    <div id="auth-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-      <div class="bg-white rounded-lg p-6 w-full max-w-sm">
-        <h2 class="text-xl font-bold mb-4 text-center">Login / Register</h2>
-        <input type="email" id="email" placeholder="Email" class="w-full p-2 border rounded mb-2" />
-        <input type="password" id="password" placeholder="Password" class="w-full p-2 border rounded mb-2" />
-        <button id="login-btn" class="w-full bg-green-500 text-white p-2 rounded hover:bg-green-600">Login</button>
-        <button id="register-btn" class="w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600 mt-2">Register</button>
-        <button id="forgot-password-btn" class="w-full bg-yellow-500 text-white p-2 rounded hover:bg-yellow-600 mt-2">Forgot Password?</button>
-        <button id="google-login-btn" class="w-full bg-red-500 text-white p-2 rounded hover:bg-red-600 mt-2">Login with Google</button>
-      </div>
-    </div>
-    
-  </div>
-  
-  <script>
-    // Firebase Config (Replace with your own credentials)
-    const firebaseConfig = {
-      apiKey: "AIzaSyBU_Q2F0zIMTrIyh5nXERtU3fEtlSX4SH0",
-    authDomain: "mystical-slate-448113-c6.firebaseapp.com",
-    projectId: "mystical-slate-448113-c6",
-    storageBucket: "mystical-slate-448113-c6.firebasestorage.app",
-    messagingSenderId: "681914071632",
-    appId: "1:681914071632:web:35d31b8d1dafb51d51ef55",
-    measurementId: "G-HQSH8R6RF9"
-    };
-    
-    // Initialize Firebase
-    firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
-    const db = firebase.firestore();
-    
-    // DOM Elements
-    // Get Forgot Password Button
-    const forgotPasswordBtn = document.getElementById("forgot-password-btn");
-    const authModal = document.getElementById("auth-modal");
-    const emailInput = document.getElementById("email");
-    const passwordInput = document.getElementById("password");
-    const loginBtn = document.getElementById("login-btn");
-    const registerBtn = document.getElementById("register-btn");
-    const googleLoginBtn = document.getElementById("google-login-btn");
-    const logoutBtn = document.getElementById("logout-btn");
-    const usernameElem = document.getElementById("username");
-    const userInfo = document.getElementById("user-info");
-    
-    const chatContainer = document.getElementById("chat-container");
-    const messageInput = document.getElementById("message-input");
-    const sendBtn = document.getElementById("send-btn");
-    const locationBtn = document.getElementById("location-btn");
-    const typingIndicator = document.getElementById("typing-indicator");
-    
-    let currentUser = null;
-    let typingTimeout;
-    
-    // Authentication Functions
-    registerBtn.addEventListener("click", async () => {
-      const email = emailInput.value;
-      const password = passwordInput.value;
-      try {
-        await auth.createUserWithEmailAndPassword(email, password);
-        alert("Registration successful!");
-      } catch (error) {
-        alert(error.message);
-      }
-    });
-    
-    loginBtn.addEventListener("click", async () => {
-      const email = emailInput.value;
-      const password = passwordInput.value;
-      try {
-        await auth.signInWithEmailAndPassword(email, password);
-      } catch (error) {
-        alert(error.message);
-      }
-    });
-    // Forgot Password Function
-forgotPasswordBtn.addEventListener("click", async () => {
-  const email = emailInput.value.trim();
-  if (!email) {
-    alert("Please enter your email to reset password.");
-    return;
-  }
-  
-  try {
-    await auth.sendPasswordResetEmail(email);
-    alert("Password reset email sent! Check your inbox.");
-  } catch (error) {
-    alert(error.message);
-  }
+// public/firebase-messaging-sw.js
+
+// Import the Firebase scripts that you need
+importScripts('https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js');
+importScripts('https://www.gstatic.com/firebasejs/8.10.1/firebase-messaging.js');
+
+// Initialize the Firebase app in the service worker
+// Replace with your project's config object
+// **SECURITY NOTE:** It's generally recommended to load config from a secure source,
+// but for simplicity in this example, we hardcode it. Be aware of the implications.
+const firebaseConfig = {
+    apiKey: "AIzaSyBU_Q2F0zIMTrIyh5nXERtU3fEtlSX4SH0", // REPLACE
+    authDomain: "mystical-slate-448113-c6.firebaseapp.com", // REPLACE
+    projectId: "mystical-slate-448113-c6", // REPLACE
+    storageBucket: "mystical-slate-448113-c6.firebasestorage.app", // REPLACE
+    messagingSenderId: "681914071632", // REPLACE
+    appId: "1:681914071632:web:35d31b8d1dafb51d51ef55", // REPLACE
+    measurementId: "G-HQSH8R6RF9" // REPLACE (Optional)
+};
+
+firebase.initializeApp(firebaseConfig);
+
+// Retrieve an instance of Firebase Messaging so that it can handle background messages.
+const messaging = firebase.messaging();
+
+// Handle incoming messages when the app is not in the foreground
+messaging.onBackgroundMessage((payload) => {
+  console.log('[firebase-messaging-sw.js] Received background message ', payload);
+
+  // Customize notification here
+  const notificationTitle = payload.notification?.title || 'New Message';
+  const notificationOptions = {
+    body: payload.notification?.body || '',
+    icon: payload.notification?.icon || '/icons/icon-192x192.png' // Optional: path to an icon
+    // You can add more options: image, actions, data, etc.
+    // data: payload.data // Attach custom data if sent from Function
+  };
+
+  // Show the notification
+  // Use the tag option to prevent duplicate notifications for the same chat/message
+  // notificationOptions.tag = payload.data?.messageId || 'new-message';
+
+  return self.registration.showNotification(notificationTitle, notificationOptions);
 });
-    
-    googleLoginBtn.addEventListener("click", async () => {
-      const provider = new firebase.auth.GoogleAuthProvider();
-      try {
-        await auth.signInWithPopup(provider);
-      } catch (error) {
-        alert(error.message);
-      }
-    });
-    
-    logoutBtn.addEventListener("click", async () => {
-      await auth.signOut();
-    });
-    
-    // Auth State Listener
-    auth.onAuthStateChanged(user => {
-      if (user) {
-        currentUser = user;
-        authModal.style.display = "none";
-        userInfo.style.display = "flex";
-        usernameElem.textContent = user.displayName || user.email;
-        loadMessages();
-      } else {
-        currentUser = null;
-        authModal.style.display = "flex";
-        userInfo.style.display = "none";
-      }
-    });
-    
-    // Advanced Messaging Features
-    
-    // Typing Indicator
-    messageInput.addEventListener("input", () => {
-      if (!currentUser) return;
-      db.collection("typing").doc(currentUser.uid).set({
-        username: currentUser.displayName || currentUser.email,
-        isTyping: messageInput.value.length > 0,
-        timestamp: firebase.firestore.FieldValue.serverTimestamp()
-      });
-      clearTimeout(typingTimeout);
-      typingTimeout = setTimeout(() => {
-        db.collection("typing").doc(currentUser.uid).set({
-          username: currentUser.displayName || currentUser.email,
-          isTyping: false,
-          timestamp: firebase.firestore.FieldValue.serverTimestamp()
-        });
-      }, 2000);
-    });
-    
-    db.collection("typing").onSnapshot(snapshot => {
-      let usersTyping = [];
-      snapshot.forEach(doc => {
-        if (doc.id !== (currentUser && currentUser.uid)) {
-          const data = doc.data();
-          if (data.isTyping) usersTyping.push(data.username);
-        }
-      });
-      typingIndicator.textContent = usersTyping.length ? usersTyping.join(", ") + " typing..." : "";
-    });
-    
-    // Load Messages with Read Receipts and Reactions
-    function loadMessages() {
-      db.collection("messages").orderBy("timestamp")
-        .onSnapshot(snapshot => {
-          chatContainer.innerHTML = "";
-          snapshot.forEach(doc => {
-            const msg = doc.data();
-            const messageId = doc.id;
-            const div = document.createElement("div");
-            div.classList.add("p-2", "rounded", "mb-2", "text-sm", "bg-white", "shadow", "relative");
-            if (msg.senderId === currentUser.uid) {
-              div.classList.add("bg-blue-100", "text-right");
-            }
-            
-            let content = `<strong>${msg.senderName}:</strong> `;
-            if (msg.location) {
-              content += `<br><a href="${msg.location}" target="_blank" class="text-blue-500 underline">📍 View Location</a>`;
-            } else {
-              content += msg.text;
-            }
-            
-            // Add read receipt for sender's messages
-            if (msg.senderId === currentUser.uid && msg.read) {
-              content += `<span class="text-xs text-green-500 ml-2">✓ Seen</span>`;
-            }
-            
-            // Display reactions if available
-            if (msg.reactions) {
-              let reactions = "";
-              for (let emoji in msg.reactions) {
-                reactions += `${emoji} ${msg.reactions[emoji]} `;
-              }
-              content += `<div class="text-xs mt-1">${reactions}</div>`;
-            }
-            
-            div.innerHTML = content;
-            
-            // Add reaction button (thumbs up)
-            const reactionBtn = document.createElement("button");
-            reactionBtn.textContent = "👍";
-            reactionBtn.classList.add("absolute", "bottom-0", "right-0", "text-sm", "hover:opacity-75");
-            reactionBtn.addEventListener("click", () => addReaction(messageId, "👍"));
-            div.appendChild(reactionBtn);
-            
-            chatContainer.appendChild(div);
-            
-            // Mark incoming messages as read
-            if (msg.senderId !== currentUser.uid && !msg.read) {
-              db.collection("messages").doc(messageId).update({ read: true });
-            }
-          });
-          chatContainer.scrollTop = chatContainer.scrollHeight;
-        });
-    }
-    
-    // Add Reaction Function
-    function addReaction(messageId, emoji) {
-      const messageRef = db.collection("messages").doc(messageId);
-      messageRef.update({
-        [`reactions.${emoji}`]: firebase.firestore.FieldValue.increment(1)
-      }).catch(error => console.error("Error adding reaction:", error));
-    }
-    
-    // Send Message
-    sendBtn.addEventListener("click", async () => {
-      const text = messageInput.value.trim();
-      if (text === "") return;
-      await db.collection("messages").add({
-        text: text,
-        senderId: currentUser.uid,
-        senderName: currentUser.displayName || currentUser.email,
-        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-        read: false
-      });
-      messageInput.value = "";
-    });
-    
-    // Share Location
-    locationBtn.addEventListener("click", async () => {
-      if (!navigator.geolocation) return alert("Geolocation not supported!");
-      navigator.geolocation.getCurrentPosition(async position => {
-        const loc = `https://www.google.com/maps?q=${position.coords.latitude},${position.coords.longitude}`;
-        await db.collection("messages").add({
-          location: loc,
-          senderId: currentUser.uid,
-          senderName: currentUser.displayName || currentUser.email,
-          timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-          read: false
-        });
-      });
-    });
-  </script>
-</body>
-</html>
+
+// Optional: Handle notification click
+self.addEventListener('notificationclick', (event) => {
+  console.log('[firebase-messaging-sw.js] Notification click Received.', event.notification);
+
+  event.notification.close();
+
+  // Example: Focus or open a specific client window/tab
+  // This requires more complex logic to find the right client or open a new one
+  // const targetUrl = event.notification.data?.click_action || '/'; // Get URL from data if provided
+  // event.waitUntil(
+  //   clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+  //     for (const client of clientList) {
+  //       if (client.url === targetUrl && 'focus' in client) {
+  //         return client.focus();
+  //       }
+  //     }
+  //     if (clients.openWindow) {
+  //       return clients.openWindow(targetUrl);
+  //     }
+  //   })
+  // );
+});
