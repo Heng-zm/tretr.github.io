@@ -1,67 +1,514 @@
-// public/firebase-messaging-sw.js
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Modern Chat App</title>
 
-// Import the Firebase scripts that you need
-importScripts('https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js');
-importScripts('https://www.gstatic.com/firebasejs/8.10.1/firebase-messaging.js');
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = { /* ... keep existing config ... */ }
+  </script>
 
-// Initialize the Firebase app in the service worker
-// Replace with your project's config object
-// **SECURITY NOTE:** It's generally recommended to load config from a secure source,
-// but for simplicity in this example, we hardcode it. Be aware of the implications.
-const firebaseConfig = {
-    apiKey: "AIzaSyBU_Q2F0zIMTrIyh5nXERtU3fEtlSX4SH0", // REPLACE
-    authDomain: "mystical-slate-448113-c6.firebaseapp.com", // REPLACE
-    projectId: "mystical-slate-448113-c6", // REPLACE
-    storageBucket: "mystical-slate-448113-c6.firebasestorage.app", // REPLACE
-    messagingSenderId: "681914071632", // REPLACE
-    appId: "1:681914071632:web:35d31b8d1dafb51d51ef55", // REPLACE
-    measurementId: "G-HQSH8R6RF9" // REPLACE (Optional)
-};
+  <!-- Firebase v8 SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+  <!-- ADD Firebase Cloud Messaging SDK -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-messaging.js"></script>
 
-firebase.initializeApp(firebaseConfig);
+  <!-- Custom styles ... -->
+  <style>
+    /* ... keep existing styles ... */
+    /* Style for mentions */
+    .mention {
+        font-weight: 600; /* semibold */
+        color: #2563EB; /* blue-600 */
+        background-color: #DBEAFE; /* blue-100 */
+        padding: 0.1rem 0.3rem;
+        border-radius: 0.25rem; /* rounded-sm */
+        cursor: pointer; /* Indicate it might be clickable later */
+    }
+  </style>
+</head>
+<body class="bg-gray-100">
+  <!-- Main App Container -->
+  <div id="app">
 
-// Retrieve an instance of Firebase Messaging so that it can handle background messages.
-const messaging = firebase.messaging();
+    <!-- Header -->
+    <header class="bg-white shadow-sm border-b border-gray-200 p-4 flex items-center justify-between sticky top-0 z-10">
+      <h1 class="text-xl font-semibold text-gray-800">Chatterbox</h1>
+      <!-- ADD Notification Button -->
+      <button id="enable-notifications-btn" class="hidden bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1.5 rounded-md text-xs font-medium transition duration-150 ease-in-out mr-auto ml-4">
+          Enable Notifications
+      </button>
+      <div id="user-info" class="hidden items-center space-x-3">
+         <!-- ... keep existing user info ... -->
+      </div>
+    </header>
 
-// Handle incoming messages when the app is not in the foreground
-messaging.onBackgroundMessage((payload) => {
-  console.log('[firebase-messaging-sw.js] Received background message ', payload);
+    <!-- ... rest of the HTML body (main, footer, auth modal) ... -->
+    <!-- Keep the rest of your existing HTML structure here -->
+    <main class="flex-grow flex flex-col overflow-hidden p-4 md:p-6">
+      <div id="chat-container" class="bg-white rounded-xl shadow-md p-4 md:p-6 flex-grow overflow-y-auto space-y-4">
+        <div class="text-center text-gray-400 py-10">Loading messages...</div>
+      </div>
+    </main>
 
-  // Customize notification here
-  const notificationTitle = payload.notification?.title || 'New Message';
-  const notificationOptions = {
-    body: payload.notification?.body || '',
-    icon: payload.notification?.icon || '/icons/icon-192x192.png' // Optional: path to an icon
-    // You can add more options: image, actions, data, etc.
-    // data: payload.data // Attach custom data if sent from Function
-  };
+    <footer class="bg-white border-t border-gray-200 p-4 sticky bottom-0">
+       <div id="typing-indicator" class="text-xs text-gray-500 mb-2 h-4"></div>
+      <div class="flex items-center space-x-3">
+         <button id="location-btn" title="Share Location" class="flex-shrink-0 bg-gray-200 hover:bg-gray-300 text-gray-600 p-3 rounded-lg transition duration-150 ease-in-out">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd" /></svg>
+        </button>
+        <input type="text" id="message-input" placeholder="Type your message..." class="flex-grow p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition duration-150 ease-in-out" />
+        <button id="send-btn" class="flex-shrink-0 bg-primary hover:bg-primary-dark text-white p-3 rounded-lg font-semibold transition duration-150 ease-in-out">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 16.571V11.5a1 1 0 012 0v5.071a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" /></svg>
+        </button>
+      </div>
+    </footer>
+     <div id="auth-modal" class="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+       <!-- Keep existing auth modal -->
+       <div class="bg-white rounded-xl shadow-xl p-8 w-full max-w-sm space-y-5">
+        <h2 class="text-2xl font-bold text-gray-800 text-center mb-6">Welcome Back!</h2>
+        <input type="email" id="email" placeholder="Email Address" class="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" />
+        <input type="password" id="password" placeholder="Password" class="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" />
+         <div class="space-y-2 pt-2">
+             <button id="login-btn" class="w-full bg-primary hover:bg-primary-dark text-white p-3 rounded-md font-semibold transition duration-150 ease-in-out">Login</button>
+            <button id="register-btn" class="w-full bg-gray-600 hover:bg-gray-700 text-white p-3 rounded-md font-semibold transition duration-150 ease-in-out">Register</button>
+            <button id="google-login-btn" class="w-full bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 p-3 rounded-md font-semibold transition duration-150 ease-in-out flex items-center justify-center space-x-2">
+               <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"></path><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"></path><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"></path><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"></path><path fill="none" d="M0 0h48v48H0z"></path></svg>
+              <span>Sign in with Google</span>
+            </button>
+            <button id="forgot-password-btn" class="w-full text-sm text-primary hover:underline pt-2">Forgot Password?</button>
+         </div>
+      </div>
+    </div>
+  </div>
 
-  // Show the notification
-  // Use the tag option to prevent duplicate notifications for the same chat/message
-  // notificationOptions.tag = payload.data?.messageId || 'new-message';
+  <script>
+    // --- Firebase Config & Initialization ---
+    const firebaseConfig = { /* ... keep your config ... */ };
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+    // ADD Firebase Messaging Initialization (check support)
+    let messaging;
+    if (firebase.messaging.isSupported()) {
+        messaging = firebase.messaging();
+        // Optional: Use VAPID key for security (generated in Firebase Console > Project Settings > Cloud Messaging > Web Push certificates)
+        // messaging.usePublicVapidKey("YOUR_VAPID_KEY_HERE");
+    } else {
+        console.warn("Firebase Messaging is not supported in this browser.");
+    }
 
-  return self.registration.showNotification(notificationTitle, notificationOptions);
-});
 
-// Optional: Handle notification click
-self.addEventListener('notificationclick', (event) => {
-  console.log('[firebase-messaging-sw.js] Notification click Received.', event.notification);
+    // --- DOM Elements ---
+    const enableNotificationsBtn = document.getElementById("enable-notifications-btn");
+    // ... keep existing DOM elements ...
+    const forgotPasswordBtn = document.getElementById("forgot-password-btn");
+    const authModal = document.getElementById("auth-modal");
+    const emailInput = document.getElementById("email");
+    const passwordInput = document.getElementById("password");
+    const loginBtn = document.getElementById("login-btn");
+    const registerBtn = document.getElementById("register-btn");
+    const googleLoginBtn = document.getElementById("google-login-btn");
+    const logoutBtn = document.getElementById("logout-btn");
+    const usernameElem = document.getElementById("username");
+    const userInfo = document.getElementById("user-info");
+    const userAvatar = document.getElementById("user-avatar");
+    const chatContainer = document.getElementById("chat-container");
+    const messageInput = document.getElementById("message-input");
+    const sendBtn = document.getElementById("send-btn");
+    const locationBtn = document.getElementById("location-btn");
+    const typingIndicator = document.getElementById("typing-indicator");
 
-  event.notification.close();
+    let currentUser = null;
+    let typingTimeout;
+    let messagesUnsubscribe = null;
 
-  // Example: Focus or open a specific client window/tab
-  // This requires more complex logic to find the right client or open a new one
-  // const targetUrl = event.notification.data?.click_action || '/'; // Get URL from data if provided
-  // event.waitUntil(
-  //   clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-  //     for (const client of clientList) {
-  //       if (client.url === targetUrl && 'focus' in client) {
-  //         return client.focus();
-  //       }
-  //     }
-  //     if (clients.openWindow) {
-  //       return clients.openWindow(targetUrl);
-  //     }
-  //   })
-  // );
-});
+    // --- Utility Functions ---
+    // ... keep existing utility functions (formatTimestamp, getInitials) ...
+     function formatTimestamp(timestamp) {
+        if (!timestamp) return '';
+        const date = timestamp.toDate();
+        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+    function getInitials(name) {
+        if (!name) return '?';
+        const parts = name.split('@')[0].split(/[\s._]+/);
+        if (parts.length === 1) { return parts[0].substring(0, 2).toUpperCase(); }
+        return (parts[0][0] + (parts[parts.length - 1][0] || '')).toUpperCase();
+    }
+
+    // --- Mention Highlighting ---
+    function highlightMentions(text) {
+        if (!text || typeof text !== 'string') return text;
+        // Simple regex for @ followed by word characters (letters, numbers, underscore)
+        // IMPORTANT: This only highlights. Mapping @username to UID for notifications
+        // requires more complex logic (e.g., querying users collection).
+        // We'll store mentions as strings for now.
+        return text.replace(/@([\w]+)/g, '<span class="mention">@$1</span>');
+    }
+
+    // --- Authentication & User State ---
+    // ... keep existing auth functions (register, login, forgot pwd, google, logout) ...
+    registerBtn.addEventListener("click", async () => {/* ... */});
+    loginBtn.addEventListener("click", async () => {/* ... */});
+    forgotPasswordBtn.addEventListener("click", async () => {/* ... */});
+    googleLoginBtn.addEventListener("click", async () => {/* ... */});
+    logoutBtn.addEventListener("click", async () => {
+       if (currentUser) {
+         db.collection("typing").doc(currentUser.uid).set({ isTyping: false });
+         // Optional: Remove FCM token on logout? Or keep it for when they log back in.
+         // removeTokenFromFirestore(); // Example function if needed
+       }
+      await auth.signOut();
+    });
+
+
+    auth.onAuthStateChanged(user => {
+      if (user) {
+        currentUser = user;
+        authModal.style.display = "none";
+        userInfo.style.display = "flex";
+        // ... (update username, avatar) ...
+        const name = user.displayName || user.email;
+        usernameElem.textContent = name;
+        userAvatar.textContent = getInitials(name);
+        userAvatar.title = name;
+
+        // --- Notifications Setup ---
+        if (messaging) { // Check if messaging is supported
+            enableNotificationsBtn.style.display = 'block'; // Show button
+            checkNotificationPermission(); // Check current status
+        }
+        // --- End Notifications Setup ---
+
+        loadMessages();
+        listenForTyping();
+      } else {
+        currentUser = null;
+        authModal.style.display = "flex";
+        userInfo.style.display = "none";
+        enableNotificationsBtn.style.display = 'none'; // Hide button
+        // ... (cleanup UI, unsubscribe listeners) ...
+        chatContainer.innerHTML = '<div class="text-center text-gray-400 py-10">Please log in to see messages.</div>';
+         typingIndicator.textContent = "";
+         if (messagesUnsubscribe) {
+            messagesUnsubscribe();
+            messagesUnsubscribe = null;
+         }
+      }
+    });
+
+     // --- Notification Permission Handling ---
+    enableNotificationsBtn.addEventListener('click', requestNotificationPermission);
+
+    function checkNotificationPermission() {
+        if (!messaging || !('Notification' in window)) return;
+        if (Notification.permission === 'granted') {
+            console.log('Notification permission already granted.');
+            enableNotificationsBtn.textContent = 'Notifications Enabled';
+            enableNotificationsBtn.disabled = true;
+            enableNotificationsBtn.classList.replace('bg-yellow-500', 'bg-green-500');
+            enableNotificationsBtn.classList.remove('hover:bg-yellow-600');
+             getTokenAndSave(); // Ensure token is saved if permission granted previously
+        } else if (Notification.permission === 'denied') {
+             console.log('Notification permission denied.');
+            enableNotificationsBtn.textContent = 'Notifications Blocked';
+            enableNotificationsBtn.disabled = true;
+            enableNotificationsBtn.classList.replace('bg-yellow-500', 'bg-red-500');
+            enableNotificationsBtn.classList.remove('hover:bg-yellow-600');
+        } else {
+             console.log('Notification permission not yet requested.');
+            enableNotificationsBtn.textContent = 'Enable Notifications';
+            enableNotificationsBtn.disabled = false;
+             enableNotificationsBtn.classList.replace('bg-green-500', 'bg-yellow-500');
+             enableNotificationsBtn.classList.replace('bg-red-500', 'bg-yellow-500');
+             enableNotificationsBtn.classList.add('hover:bg-yellow-600');
+        }
+    }
+
+    async function requestNotificationPermission() {
+        if (!messaging) return;
+        console.log('Requesting notification permission...');
+        enableNotificationsBtn.disabled = true;
+        try {
+            const permission = await Notification.requestPermission();
+            if (permission === 'granted') {
+                console.log('Notification permission granted.');
+                await getTokenAndSave();
+            } else {
+                console.log('Unable to get permission to notify.');
+            }
+        } catch (error) {
+            console.error('Error requesting notification permission: ', error);
+        } finally {
+             checkNotificationPermission(); // Update button state
+        }
+    }
+
+    async function getTokenAndSave() {
+        if (!messaging || !currentUser) return;
+        try {
+             // Register the service worker (must exist at root)
+            const swRegistration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+            console.log('Service Worker registered:', swRegistration);
+
+            const currentToken = await messaging.getToken({ serviceWorkerRegistration: swRegistration });
+            if (currentToken) {
+                console.log('FCM Token:', currentToken);
+                await saveTokenToFirestore(currentToken);
+            } else {
+                console.log('No registration token available. Request permission to generate one.');
+                // Might need to request permission again if it was revoked/reset
+                requestNotificationPermission();
+            }
+        } catch (err) {
+            console.error('An error occurred while retrieving token. ', err);
+            // Handle specific errors like 'messaging/notifications-blocked'
+             if (err.code === 'messaging/notifications-blocked') {
+                 alert('Notifications are blocked. Please enable them in your browser settings.');
+             }
+             checkNotificationPermission(); // Update button state
+        }
+    }
+
+    async function saveTokenToFirestore(token) {
+        if (!currentUser) return;
+        const userRef = db.collection('users').doc(currentUser.uid);
+        try {
+            // Store token(s). Using an array allows for multiple devices.
+            // Use FieldValue.arrayUnion to add token only if it doesn't exist.
+            await userRef.set({
+                fcmTokens: firebase.firestore.FieldValue.arrayUnion(token),
+                lastSeen: firebase.firestore.FieldValue.serverTimestamp() // Good practice
+            }, { merge: true }); // Merge to avoid overwriting other user data
+            console.log('Token saved for user:', currentUser.uid);
+        } catch (error) {
+            console.error('Error saving token to Firestore: ', error);
+        }
+    }
+     // Optional: function to remove token on logout or when invalid
+    async function removeTokenFromFirestore(tokenToRemove) {
+         if (!currentUser || !tokenToRemove) return;
+         const userRef = db.collection('users').doc(currentUser.uid);
+         try {
+             await userRef.update({
+                 fcmTokens: firebase.firestore.FieldValue.arrayRemove(tokenToRemove)
+             });
+             console.log('Token removed for user:', currentUser.uid);
+         } catch (error) {
+             console.error('Error removing token from Firestore: ', error);
+         }
+    }
+
+    // --- Messaging Features ---
+    // ... keep existing typing indicator logic ...
+     messageInput.addEventListener("input", () => { /* ... */ });
+     function listenForTyping() { /* ... */ }
+
+    // --- Load Messages (Modified to highlight mentions) ---
+    function loadMessages() {
+       // ... (keep existing unsubscribe logic, limitToLast, error handling) ...
+       if (messagesUnsubscribe) { messagesUnsubscribe(); }
+       let isFirstLoad = true;
+
+       messagesUnsubscribe = db.collection("messages").orderBy("timestamp", "asc")
+        .limitToLast(50)
+        .onSnapshot(snapshot => {
+          if (isFirstLoad) {
+            chatContainer.innerHTML = "";
+            isFirstLoad = false;
+          }
+
+            snapshot.docChanges().forEach(change => {
+                 const msg = change.doc.data();
+                 const messageId = change.doc.id;
+                 const isSender = msg.senderId === currentUser?.uid; // Optional chaining for safety
+
+                if (change.type === "added") {
+                    // Check for moderation flag
+                    if (msg.isFlagged) {
+                        msg.text = "[Message blocked by moderation]"; // Overwrite text if flagged
+                    }
+                    const messageElement = createMessageElement(messageId, msg, isSender);
+                    chatContainer.appendChild(messageElement);
+                     if (!isSender && !msg.read) { markMessageAsRead(messageId); }
+                }
+                if (change.type === "modified") {
+                     if (msg.isFlagged) { msg.text = "[Message blocked by moderation]"; }
+                     const existingMsgElement = chatContainer.querySelector(`[data-message-id="${messageId}"]`);
+                    if (existingMsgElement) {
+                        updateMessageElement(existingMsgElement, msg, isSender);
+                    }
+                }
+                 if (change.type === "removed") {
+                     const msgToRemove = chatContainer.querySelector(`[data-message-id="${messageId}"]`);
+                     if(msgToRemove) msgToRemove.remove();
+                 }
+            });
+          chatContainer.scrollTo({ top: chatContainer.scrollHeight, behavior: 'smooth' });
+        }, error => { /* ... error handling ... */});
+    }
+
+    // --- Create Message Element (Modified for Mentions) ---
+    function createMessageElement(messageId, msg, isSender) {
+        const messageWrapper = document.createElement("div");
+        messageWrapper.classList.add("flex", "items-end", "space-x-2", "group");
+        messageWrapper.dataset.messageId = messageId;
+
+        const bubble = document.createElement("div");
+        bubble.classList.add("p-3", "rounded-xl", "max-w-xs", "md:max-w-md", "relative");
+        // ... (add sender/receiver styles, avatar as before) ...
+         if (isSender) {
+            messageWrapper.classList.add("justify-end", "ml-auto");
+            bubble.classList.add("bg-primary", "text-white", "rounded-br-lg");
+        } else {
+            messageWrapper.classList.add("justify-start", "mr-auto");
+            bubble.classList.add("bg-gray-200", "text-gray-800", "rounded-bl-lg");
+             const avatar = document.createElement("div");
+             avatar.classList.add("w-7", "h-7", "rounded-full", "bg-gray-300", "flex", "items-center", "justify-center", "text-xs", "font-bold", "text-gray-600", "flex-shrink-0", "self-start");
+             avatar.textContent = getInitials(msg.senderName);
+             avatar.title = msg.senderName;
+             messageWrapper.appendChild(avatar);
+        }
+
+        // --- Content with Mention Highlighting ---
+        let contentHTML = `<div class="text-sm break-words">`;
+        if (msg.location) {
+            const linkClass = isSender ? "text-blue-100 hover:text-white underline" : "text-blue-600 hover:text-blue-800 underline";
+            contentHTML += `📍 <a href="${msg.location}" target="_blank" class="${linkClass}">View Shared Location</a>`;
+        } else {
+            // Apply mention highlighting HERE
+            contentHTML += highlightMentions(msg.text); // Use the utility function
+        }
+        contentHTML += `</div>`;
+        // --- End Content Modification ---
+
+        // ... (keep metaDiv, reactionsDiv, reactionBtn logic as before) ...
+         const metaDiv = document.createElement('div'); /* ... */
+         const reactionsDiv = document.createElement('div'); /* ... */
+         const reactionBtn = document.createElement("button"); /* ... */
+
+        bubble.innerHTML = contentHTML;
+        bubble.appendChild(metaDiv);
+        bubble.appendChild(reactionsDiv);
+        // metaDiv.appendChild(reactionBtn); // Append button to meta line
+          // Meta Info (Timestamp & Read Receipt)
+         metaDiv.classList.add("text-xs", "mt-1.5", "opacity-80", "text-right");
+         metaDiv.style.fontSize = '0.7rem';
+         let metaContent = formatTimestamp(msg.timestamp);
+         if (isSender && msg.isFlagged) { // Show indicator if sender's message was flagged
+              metaContent += ` <span class="ml-1 text-yellow-300" title="Flagged">⚠️</span>`;
+         }
+          else if (isSender && msg.read) {
+             metaContent += ` <span class="ml-1 text-blue-300" title="Seen">✓✓</span>`;
+         } else if (isSender) {
+             metaContent += ` <span class="ml-1 text-gray-400" title="Sent">✓</span>`;
+         }
+         metaDiv.innerHTML = metaContent;
+
+        // Reactions Display
+        reactionsDiv.classList.add("reactions-display", "mt-1", "text-xs", "flex", "justify-end", "space-x-1", "items-center");
+        updateReactionsDisplay(reactionsDiv, msg.reactions, isSender); // Populate reactions
+
+        // Reaction Button
+        reactionBtn.innerHTML = '👍';
+        reactionBtn.title = "React with 👍";
+        reactionBtn.classList.add("reaction-add-btn", "text-xs", "opacity-0", "group-hover:opacity-60", "hover:!opacity-100", "transition-opacity", "ml-2", "p-0.5");
+        if(isSender) reactionBtn.classList.add("text-blue-200");
+        else reactionBtn.classList.add("text-gray-500");
+        reactionBtn.addEventListener("click", (e) => { e.stopPropagation(); addReaction(messageId, "👍"); });
+
+        metaDiv.appendChild(reactionBtn); // Append reaction button to meta line
+
+        if(isSender) messageWrapper.appendChild(bubble);
+        else messageWrapper.appendChild(bubble);
+
+        return messageWrapper;
+    }
+
+    // --- Update Message Element (handle mentions/flags) ---
+     function updateMessageElement(element, msg, isSender) {
+        // Update Content (mainly for flag changes)
+        const contentDiv = element.querySelector(".text-sm.break-words");
+        if(contentDiv) {
+             if (msg.isFlagged) {
+                 contentDiv.innerHTML = "[Message blocked by moderation]";
+             } else if (msg.location) {
+                // Update location link if needed (unlikely)
+             } else {
+                  contentDiv.innerHTML = highlightMentions(msg.text); // Re-highlight
+             }
+        }
+
+        // Update Read Receipt/Flag Status
+        const metaDiv = element.querySelector(".text-xs");
+        if (metaDiv) {
+             let metaContent = formatTimestamp(msg.timestamp);
+              if (isSender && msg.isFlagged) {
+                  metaContent += ` <span class="ml-1 text-yellow-300" title="Flagged">⚠️</span>`;
+             }
+              else if (isSender && msg.read) {
+                 metaContent += ` <span class="ml-1 text-blue-300" title="Seen">✓✓</span>`;
+             } else if (isSender) {
+                 metaContent += ` <span class="ml-1 text-gray-400" title="Sent">✓</span>`;
+             }
+            const reactionBtnHTML = metaDiv.querySelector('.reaction-add-btn')?.outerHTML || '';
+            metaDiv.innerHTML = metaContent + reactionBtnHTML;
+             const reactionBtn = metaDiv.querySelector('.reaction-add-btn');
+             if(reactionBtn && !reactionBtn.getAttribute('listener-attached')){
+                 reactionBtn.addEventListener("click", (e) => { /* ... */ });
+                 reactionBtn.setAttribute('listener-attached', 'true');
+             }
+        }
+
+        // Update Reactions
+        const reactionsDiv = element.querySelector(".reactions-display");
+        if(reactionsDiv) { updateReactionsDisplay(reactionsDiv, msg.reactions, isSender); }
+    }
+
+     function updateReactionsDisplay(container, reactions, isSender) { /* ... keep existing ... */ }
+     function markMessageAsRead(messageId) { /* ... keep existing ... */ }
+     function addReaction(messageId, emoji) { /* ... keep existing ... */ }
+
+    // --- Send Message (Modified to extract mentions) ---
+    async function sendMessage() {
+        const text = messageInput.value.trim();
+        if (text === "" || !currentUser) return;
+
+        // Extract mentions (simple @username extraction)
+        const mentionRegex = /@([\w]+)/g;
+        const mentions = [...text.matchAll(mentionRegex)].map(match => match[1]); // Array of usernames mentioned
+
+        try {
+            await db.collection("messages").add({
+                text: text,
+                senderId: currentUser.uid,
+                senderName: currentUser.displayName || currentUser.email,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                read: false,
+                reactions: {},
+                mentions: mentions, // Store the array of mentioned usernames (strings)
+                // isFlagged: false // Cloud function will add this if needed
+            });
+            messageInput.value = "";
+             db.collection("typing").doc(currentUser.uid).set({ isTyping: false });
+             clearTimeout(typingTimeout);
+        } catch (error) {
+            console.error("Error sending message: ", error);
+            alert("Could not send message. Please try again.");
+        }
+    }
+    sendBtn.addEventListener("click", sendMessage);
+    messageInput.addEventListener("keypress", (e) => { /* ... keep existing ... */ });
+
+    // --- Share Location ---
+    locationBtn.addEventListener("click", () => { /* ... keep existing ... */ });
+
+  </script>
+</body>
+</html>
